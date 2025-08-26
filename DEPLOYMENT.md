@@ -45,16 +45,39 @@ aws configure
 
 **Important**: Deploy components in this specific order due to infrastructure dependencies.
 
-### Step 1: Deploy Web Application (~15-20 minutes)
+### Step 1: Configure Region and Deploy Web Application (~15-20 minutes)
 
 The web application creates the VPC that other components will use.
 
-#### Option A: Cloud Deployment 
+#### Configure AWS Region (Optional)
+
+By default, the application deploys to **us-west-2**. To use a different region:
 
 ```bash
 # Navigate to deployment directory
 cd agent-blueprint/chatbot-deployment/infrastructure
 
+# Edit main deployment configuration (only if changing from us-west-2)
+vim config.json
+# Change "defaultRegion" to your preferred region
+```
+
+**Example for Korea region:**
+```json
+{
+  "defaultRegion": "ap-northeast-2",
+  "supportedRegions": [
+    "us-west-2",
+    "us-east-1", 
+    "ap-northeast-2",
+    "eu-west-1"
+  ]
+}
+```
+
+#### Deploy Web Application
+
+```bash
 # Install dependencies
 npm install
 
@@ -91,7 +114,8 @@ Deploy serverless MCP servers (independent of VPC).
 # Navigate to serverless MCP farm directory
 cd agent-blueprint/serverless-mcp-farm
 
-# Review and customize configuration
+# Configure region (optional - defaults to us-west-2)
+# Only edit if you changed region in Step 1
 vim deploy-config.json
 
 # Deploy all enabled MCP servers
@@ -326,17 +350,15 @@ Try queries that utilize MCP servers:
 
 ### Web Application
 
-Create `.env.production` in `chatbot-app/`:
+Configuration is handled through deployment scripts and infrastructure configuration files:
 
-```bash
-# API Configuration
-NEXT_PUBLIC_API_URL=https://your-backend-api.amazonaws.com
-BACKEND_URL=https://your-backend-api.amazonaws.com
-```
+- `agent-blueprint/chatbot-deployment/infrastructure/config.json` - Main deployment configuration
+- Environment variables are automatically set during deployment
+- No manual `.env` file creation required
 
 ### MCP Servers
 
-Configure in `agent-blueprint/direct-lambda-mcp/deploy-config.json`:
+Configure in `agent-blueprint/serverless-mcp-farm/deploy-config.json`:
 
 ```json
 {

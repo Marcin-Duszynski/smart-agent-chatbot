@@ -194,22 +194,18 @@ Configure AI models, temperature, and system prompts:
 
 ### Cloud Deployment
 
-1. **Configure cloud environment**:
-   ```bash
-   cp .env.example .env.production
-   # Edit .env.production with cloud-specific settings
-   ```
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
-2. **Deploy MCP servers**:
-   ```bash
-   cd agent-blueprint/direct-lambda-mcp
-   ./deploy-server.sh
-   ```
+Quick start:
+```bash
+# 1. Deploy main application
+cd agent-blueprint/chatbot-deployment/infrastructure
+./scripts/deploy.sh
 
-3. **Deploy main application**:
-   ```bash
-   ./deploy.sh
-   ```
+# 2. Deploy MCP servers
+cd ../../serverless-mcp-farm
+./deploy-server.sh
+```
 
 ## Technology Stack
 
@@ -341,11 +337,13 @@ The platform includes ready-to-deploy Lambda MCP servers with Streamable HTTP tr
 
 ### AWS Cloud Deployment
 ```bash
+# See DEPLOYMENT.md for complete instructions
 # 1. Deploy main application (creates VPC)
-./deploy.sh
+cd agent-blueprint/chatbot-deployment/infrastructure
+./scripts/deploy.sh
 
 # 2. Deploy serverless MCP servers (independent)
-cd agent-blueprint/serverless-mcp-farm
+cd ../../serverless-mcp-farm
 ./deploy-server.sh
 
 # 3. Deploy shared infrastructure (uses VPC)
@@ -359,46 +357,6 @@ cd ../
 
 See `DEPLOYMENT.md` for detailed AWS deployment instructions using CDK.
 
-
-## Use Cases
-
-### Business Tool Testing
-1. Define custom tools for your business logic
-2. Toggle different tool combinations
-3. Test agent behavior with various configurations
-4. Measure performance and accuracy
-
-### Rapid Prototyping
-1. Quickly integrate new MCP servers
-2. Test tool interactions
-3. Validate business requirements
-4. Demonstrate capabilities to stakeholders
-
-### Development Platform
-1. Develop and test custom tools
-2. Debug tool execution
-3. Monitor real-time performance
-4. Export conversation logs
-
-### Enterprise Integration
-1. Connect to existing knowledge bases
-2. Integrate with internal APIs
-3. Deploy scalable MCP server infrastructure
-4. Manage tool access and permissions
-
-## Security & Best Practices
-
-### MCP Server Security
-- All MCP servers use HTTPS endpoints
-- Authentication tokens for external services
-- Rate limiting and request validation
-- Secure environment variable management
-
-### AWS Integration
-- IAM roles with least privilege access
-- VPC configuration for network isolation
-- CloudWatch logging and monitoring
-- Secrets Manager for sensitive data
 
 ### Adding New Tools
 1. **Built-in Tools**: Extend Strands framework capabilities
