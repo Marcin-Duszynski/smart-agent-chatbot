@@ -20,9 +20,9 @@ class MCPSessionManager:
         # Concurrency control
         self._lock = Lock()
         
-        # Cleanup settings
-        self.cleanup_interval = 300        # 5 minutes
-        self.session_timeout = 3600        # 1 hour
+        # Cleanup settings - optimized for better resource management
+        self.cleanup_interval = 180        # 3 minutes (more frequent)
+        self.session_timeout = 1800        # 30 minutes (shorter timeout)
         self.cleanup_task_running = False
     
     def get_tools_for_session(self, backend_session_id: str, enabled_servers: List[Dict[str, Any]]) -> List[Any]:

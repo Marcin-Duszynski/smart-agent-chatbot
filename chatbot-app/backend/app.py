@@ -59,14 +59,31 @@ async def lifespan(app: FastAPI):
     try:
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(asyncio_exception_handler)
+        
+        # Start MCP session cleanup task
+        from unified_tool_manager import get_unified_tool_manager
+        tool_manager = get_unified_tool_manager()
+        
+        # Start cleanup task in background
+        asyncio.create_task(tool_manager.start_session_cleanup_task())
+        print("🚀 Started MCP session cleanup background task")
+        
     except RuntimeError:
         # No event loop running, skip setup
         pass
+    except Exception as e:
+        print(f"⚠️ Failed to start MCP cleanup task: {e}")
     
     yield
     
-    # Shutdown (if needed)
-    pass
+    # Shutdown - Stop cleanup tasks
+    try:
+        from unified_tool_manager import get_unified_tool_manager
+        tool_manager = get_unified_tool_manager()
+        tool_manager.stop_session_cleanup_task()
+        print("🛑 Stopped MCP session cleanup task")
+    except Exception as e:
+        print(f"⚠️ Failed to stop MCP cleanup task: {e}")
 
 app = FastAPI(title="Strands Agent Chatbot API", version="1.0.0", lifespan=lifespan)
 

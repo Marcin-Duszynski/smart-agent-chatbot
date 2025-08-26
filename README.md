@@ -132,7 +132,7 @@ You can easily add new MCP servers through the intuitive interface:
 
 Configure AI models, temperature, and system prompts:
 
-<img src="docs/images/model-configuration.png" 
+<img src="docs/images/model-config.png" 
      alt="Model Configuration Interface" 
      width="600">
 
