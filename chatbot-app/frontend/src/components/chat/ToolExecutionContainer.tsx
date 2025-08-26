@@ -1,0 +1,589 @@
+import React, { useState, useCallback, useMemo } from 'react'
+import { Badge } from '@/components/ui/badge'
+import { ChevronRight, Zap, Brain, CheckCircle, Clock, TrendingUp, Download } from 'lucide-react'
+import { ToolExecution } from '@/types/chat'
+import { getToolIconById } from '@/utils/chat'
+import { ChartRenderer } from '@/components/ChartRenderer'
+import { ChartToolResult } from '@/types/chart'
+import { useAgentAnalysis } from '@/hooks/useAgentAnalysis'
+import { AgentAnalysisToolResult, AgentAnalysisToolCall } from '@/components/AgentAnalysisToolResult'
+import { JsonDisplay } from '@/components/ui/JsonDisplay'
+import { getApiUrl } from '@/config/environment'
+
+interface ToolExecutionContainerProps {
+  toolExecutions: ToolExecution[]
+  compact?: boolean // For use within message containers
+  availableTools?: Array<{
+    id: string
+    name: string
+    tool_type?: string
+  }>
+  sessionId?: string // Add session ID prop
+}
+
+
+export const ToolExecutionContainer: React.FC<ToolExecutionContainerProps> = ({ toolExecutions, compact = false, availableTools = [], sessionId }) => {
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set())
+  const [selectedImage, setSelectedImage] = useState<{ src: string; alt: string } | null>(null)
+  const { setAgentAnalysis } = useAgentAnalysis()
+  
+  // Track agent tool executions by their Tool Use ID
+  const agentToolExecutionIds = useMemo(() => {
+    const agentIds = new Set<string>()
+    
+    toolExecutions.forEach(toolExecution => {
+      const matchedTool = availableTools.find(tool => tool.id === toolExecution.toolName)
+      if (matchedTool?.tool_type === 'agent') {
+        agentIds.add(toolExecution.id) // Use Tool Use ID
+      }
+    })
+    
+    return agentIds
+  }, [toolExecutions, availableTools])
+
+  const toggleToolExpansion = (toolId: string) => {
+    setExpandedTools(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(toolId)) {
+        newSet.delete(toolId)
+      } else {
+        newSet.add(toolId)
+      }
+      return newSet
+    })
+  }
+
+
+  const isToolExpanded = (toolId: string, toolExecution: ToolExecution) => {
+    // Only expand if user manually clicked to expand
+    return expandedTools.has(toolId)
+  }
+
+
+  if (!toolExecutions || toolExecutions.length === 0) {
+    return null
+  }
+
+  // Helper function to render visualization tool result
+  const renderVisualizationResult = (toolResult: string, toolUseId?: string) => {
+    try {
+      const result: ChartToolResult = JSON.parse(toolResult);
+      
+      if (result.success && result.chart_data) {
+        // Direct rendering with chart data
+        return (
+          <div className="my-4">
+            <ChartRenderer chartData={result.chart_data} />
+            <p className="text-sm text-green-600 mt-2">
+              {result.message}
+            </p>
+          </div>
+        );
+      } else if (result.success && result.chart_id) {
+        // Fallback to API lookup for backward compatibility
+        return (
+          <div className="my-4">
+            <ChartRenderer 
+              chartId={result.chart_id} 
+              sessionId={sessionId} 
+              toolUseId={toolUseId}
+            />
+            <p className="text-sm text-green-600 mt-2">
+              {result.message}
+            </p>
+          </div>
+        );
+      } else {
+        return (
+          <div className="my-4 p-3 bg-red-50 border border-red-200 rounded">
+            <p className="text-red-600">{result.message}</p>
+          </div>
+        );
+      }
+    } catch (e) {
+      // JSON parsing failed, treat as plain text
+      return null;
+    }
+  };
+
+  // Helper function to handle ZIP download
+  const handleFilesDownload = async (toolUseId: string, toolName?: string, toolResult?: string) => {
+    try {
+      // Handle Python MCP downloads
+      if (toolName === 'run_python_code' && sessionId) {
+        try {
+          // Get list of all files in the session directory for this tool execution
+          const filesListResponse = await fetch(getApiUrl(`files/list?toolUseId=${toolUseId}&sessionId=${sessionId}`));
+          
+          if (!filesListResponse.ok) {
+            throw new Error(`Failed to get file list: ${filesListResponse.status}`);
+          }
+          
+          const filesData = await filesListResponse.json();
+          const filesList = filesData.files || [];
+          
+          if (filesList.length === 0) {
+            throw new Error('No files found to download');
+          }
+          
+          // Import JSZip dynamically
+          const JSZip = (await import('jszip')).default;
+          const zip = new JSZip();
+          
+          let filesAdded = 0;
+          
+          // Download each file from backend session directory
+          for (const fileName of filesList) {
+            try {
+              const fileUrl = getApiUrl(`files/download/${sessionId}/${toolUseId}/${fileName}`);
+              const response = await fetch(fileUrl);
+              
+              if (response.ok) {
+                const blob = await response.blob();
+                zip.file(fileName, blob);
+                filesAdded++;
+              }
+            } catch (e) {
+              console.warn(`Failed to download ${fileName}:`, e);
+            }
+          }
+          
+          if (filesAdded === 0) {
+            throw new Error('No files could be downloaded');
+          }
+          
+          // Generate and download ZIP
+          const zipBlob = await zip.generateAsync({ type: 'blob' });
+          const objectUrl = URL.createObjectURL(zipBlob);
+          const link = document.createElement('a');
+          link.href = objectUrl;
+          link.download = `python_execution_${toolUseId}.zip`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(objectUrl);
+          return;
+          
+        } catch (error) {
+          console.error('Python MCP download failed:', error);
+          throw error;
+        }
+      }
+      
+      // For Bedrock Code Interpreter, try to use the zip_download info from tool result first
+      if (toolName === 'bedrock_code_interpreter' && toolResult) {
+        try {
+          const result = JSON.parse(toolResult);
+          if (result.zip_download && result.zip_download.path) {
+            const zipUrl = result.zip_download.path;
+            const zipResponse = await fetch(zipUrl);
+            if (zipResponse.ok) {
+              const zipBlob = await zipResponse.blob();
+              const objectUrl = URL.createObjectURL(zipBlob);
+              const link = document.createElement('a');
+              link.href = objectUrl;
+              link.download = result.zip_download.name || `code_interpreter_${toolUseId}.zip`;
+              link.style.display = 'none';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(objectUrl);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('ZIP download info not available or invalid, falling back to manual path');
+        }
+        
+        // Fallback: try hardcoded path
+        try {
+          const zipUrl = sessionId 
+            ? `/files/download/${sessionId}/${toolUseId}/code_interpreter_${toolUseId}.zip`
+            : `/files/download/output/${toolUseId}/code_interpreter_${toolUseId}.zip`;
+          
+          const zipResponse = await fetch(zipUrl);
+          if (zipResponse.ok) {
+            const zipBlob = await zipResponse.blob();
+            const objectUrl = URL.createObjectURL(zipBlob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = `code_interpreter_${toolUseId}.zip`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(objectUrl);
+            return;
+          }
+        } catch (e) {
+          console.warn('Pre-made ZIP not available, falling back to individual files');
+        }
+      }
+      
+      // Fallback: create ZIP from individual files
+      // Import JSZip dynamically
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+      
+      // Get actual file list from backend API
+      const params = new URLSearchParams({ toolUseId });
+      if (sessionId) {
+        params.append('sessionId', sessionId);
+      }
+      
+      const listResponse = await fetch(getApiUrl(`files/list?${params.toString()}`));
+      
+      if (!listResponse.ok) {
+        throw new Error(`Failed to get file list: ${listResponse.status}`);
+      }
+      
+      const { files } = await listResponse.json();
+      
+      if (!files || files.length === 0) {
+        throw new Error('No files found to download');
+      }
+      
+      let filesAdded = 0;
+      const addedFiles: string[] = [];
+      
+      // Download each file that actually exists
+      for (const fileName of files) {
+        try {
+          const fileUrl = sessionId 
+            ? `/output/sessions/${sessionId}/${toolUseId}/${fileName}`
+            : `/output/${toolUseId}/${fileName}`;
+          
+          const response = await fetch(fileUrl);
+          
+          if (response.ok) {
+            if (fileName.endsWith('.py') || fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.json')) {
+              // Text files
+              const content = await response.text();
+              zip.file(fileName, content);
+            } else {
+              // Binary files (images, etc.)
+              const blob = await response.blob();
+              zip.file(fileName, blob);
+            }
+            filesAdded++;
+            addedFiles.push(fileName);
+          }
+        } catch (e) {
+          console.warn(`Failed to download ${fileName}:`, e);
+          continue;
+        }
+      }
+      
+      if (filesAdded === 0) {
+        throw new Error('No files could be downloaded');
+      }
+      
+      // Generate and download ZIP
+      const zipBlob = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      
+      const objectUrl = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `code_interpreter_${toolUseId}.zip`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up object URL
+      URL.revokeObjectURL(objectUrl);
+      
+    } catch (error) {
+      console.error('Failed to create ZIP:', error);
+      // Fallback: download just the Python script
+      try {
+        await handleScriptDownload(toolUseId);
+      } catch (fallbackError) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        alert(`Download failed: ${errorMessage}`);
+      }
+    }
+  };
+
+  // Fallback function to download script file directly
+  const handleScriptDownload = async (toolUseId: string) => {
+    try {
+      // Use session-specific path if sessionId is available, otherwise fallback to old path
+      const scriptUrl = sessionId 
+        ? `/output/sessions/${sessionId}/${toolUseId}/script_001.py`
+        : `/output/${toolUseId}/script_001.py`;
+      const scriptResponse = await fetch(scriptUrl);
+      
+      if (scriptResponse.ok) {
+        const scriptBlob = await scriptResponse.blob();
+        const objectUrl = URL.createObjectURL(scriptBlob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = `script_001_${toolUseId}.py`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up object URL
+        URL.revokeObjectURL(objectUrl);
+        
+        alert('Could not create ZIP. Downloaded Python script only.');
+      } else {
+        throw new Error('Script file not found');
+      }
+    } catch (error) {
+      throw new Error('Failed to download files');
+    }
+  };
+
+
+  return (
+    <>
+      <div className={compact ? "space-y-1" : "mb-4 space-y-1"}>
+      {toolExecutions.map((toolExecution) => {
+        const IconComponent = getToolIconById(toolExecution.toolName)
+        const isExpanded = isToolExpanded(toolExecution.id, toolExecution)
+        
+        // Special handling for agent-type tools - render as clickable button
+        const isAgentTool = agentToolExecutionIds.has(toolExecution.id);
+        const matchedTool = availableTools.find(tool => tool.id === toolExecution.toolName);
+        
+        if (isAgentTool && matchedTool) {
+          if (toolExecution.isComplete) {
+            return (
+              <AgentAnalysisToolResult
+                key={toolExecution.id}
+                type="complete"
+                result={{
+                  title: matchedTool.name || 'Analysis Complete',
+                  summary: 'Click to view detailed analysis with charts and insights',
+                  status: 'idle'
+                }}
+                toolUseId={toolExecution.id}
+                toolName={toolExecution.toolName}
+                sessionId={sessionId}
+                isReadonly={false}
+              />
+            )
+          } else {
+            return (
+              <AgentAnalysisToolCall
+                key={toolExecution.id}
+                type="create"
+                args={{
+                  query: toolExecution.toolInput?.query || `Running ${matchedTool.name}`,
+                  title: matchedTool.name || 'Analysis'
+                }}
+                isReadonly={false}
+              />
+            )
+          }
+        }
+        
+        // Check if this is a visualization tool and render chart directly
+        if (toolExecution.toolName === 'create_visualization' && toolExecution.toolResult && toolExecution.isComplete) {
+          const chartResult = renderVisualizationResult(toolExecution.toolResult, toolExecution.id);
+          if (chartResult) {
+            return (
+              <div key={toolExecution.id} className="my-4">
+                {chartResult}
+              </div>
+            );
+          }
+        }
+        
+        return (
+          <div key={toolExecution.id} className={`${
+            compact 
+              ? "bg-slate-50/80 rounded-md border border-slate-200/60" 
+              : "bg-white/80 rounded-md border border-slate-200 shadow-sm"
+          } overflow-hidden`} style={{ maxWidth: '100%', width: '100%' }}>
+            {/* Tool Header - More Compact */}
+            <button
+              onClick={() => toggleToolExpansion(toolExecution.id)}
+              className={`w-full ${compact ? "px-3 py-2" : "px-3 py-2.5"} flex items-center justify-between hover:bg-slate-50 transition-colors`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="p-1 bg-blue-50 rounded border border-blue-200">
+                  <IconComponent className="h-3 w-3 text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-medium text-xs text-gray-900">{toolExecution.toolName}</p>
+                    {toolExecution.isComplete ? (
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <Clock className="h-3 w-3 text-blue-500 animate-pulse" />
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-white/70 text-blue-700 border-blue-300">
+                  {toolExecution.isComplete ? 'Completed' : 'Running'}
+                </Badge>
+                <ChevronRight 
+                  className="h-3 w-3 text-gray-400 transition-transform" 
+                  style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                />
+              </div>
+            </button>
+
+            {/* Tool Content */}
+            {isExpanded && (
+              <div className={`border-t ${compact ? "border-slate-200/60 bg-white/50" : "border-blue-200 bg-white/70"} backdrop-blur-sm`}>
+                <div className={`${compact ? "p-3" : "p-4"} min-w-0 max-w-full overflow-hidden`}>
+                  {/* Tool Input */}
+                  {toolExecution.toolInput !== undefined && (
+                    <div className={compact ? "mb-4" : "mb-6"}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Zap className="h-4 w-4 text-blue-500" />
+                        <h4 className="text-sm font-semibold text-gray-900">Input Parameters</h4>
+                      </div>
+                      {toolExecution.toolInput && Object.keys(toolExecution.toolInput).length > 0 ? (
+                        <div className="bg-white rounded-lg border border-slate-200" style={{ maxWidth: '100%', width: '100%' }}>
+                          <div className="p-3" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                            <JsonDisplay 
+                              data={toolExecution.toolInput}
+                              maxLines={6}
+                              label="Parameters"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white rounded-lg border border-slate-200 p-3" style={{ maxWidth: '100%', width: '100%' }}>
+                          <div className="text-sm text-gray-500 italic">
+                            No input parameters (this tool takes no arguments)
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Reasoning Process */}
+                  {toolExecution.reasoningText && toolExecution.reasoningText.trim() && (
+                    <div className={compact ? "mb-4" : "mb-6"}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Brain className="h-4 w-4 text-purple-500" />
+                        <h4 className="text-sm font-semibold text-gray-900">AI Reasoning Process</h4>
+                      </div>
+                      <div className="bg-white rounded-lg border-l-4 border-purple-300" style={{ maxWidth: '100%', width: '100%' }}>
+                        <div className="p-3" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                          <JsonDisplay 
+                            data={toolExecution.reasoningText}
+                            maxLines={5}
+                            label="Reasoning"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+
+                  {/* Tool Result */}
+                  {toolExecution.toolResult && (
+                    <div className={compact ? "mb-4" : "mb-6"}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <h4 className="text-sm font-semibold text-gray-900">Tool Result</h4>
+                        {(toolExecution.toolName === 'bedrock_code_interpreter' || toolExecution.toolName === 'run_python_code') && toolExecution.isComplete && (
+                          <button
+                            onClick={() => handleFilesDownload(toolExecution.id, toolExecution.toolName, toolExecution.toolResult)}
+                            className="ml-auto p-1.5 hover:bg-gray-100 rounded transition-colors flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800"
+                            title="Download all files as ZIP"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>Download Files</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="bg-white rounded-lg border-l-4 border-green-300" style={{ maxWidth: '100%', width: '100%' }}>
+                        <div className="p-3" style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                          <JsonDisplay 
+                            data={toolExecution.toolResult}
+                            maxLines={8}
+                            label="Tool Result"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tool Images */}
+                  {toolExecution.images && toolExecution.images.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <h4 className="text-sm font-semibold text-gray-900">Generated Images</h4>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {toolExecution.images.map((image, idx) => {
+                          const imageSrc = `data:image/${image.format};base64,${typeof image.data === 'string' ? image.data : btoa(String.fromCharCode(...new Uint8Array(image.data)))}`;
+                          return (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={imageSrc}
+                                alt={`Tool generated image ${idx + 1}`}
+                                className="w-full h-auto rounded-lg border border-slate-200 shadow-sm cursor-pointer hover:shadow-lg transition-shadow"
+                                style={{ maxHeight: '325px', objectFit: 'contain' }}
+                                onClick={() => setSelectedImage({ src: imageSrc, alt: `Tool generated image ${idx + 1}` })}
+                              />
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Badge variant="secondary" className="text-xs bg-black/70 text-white border-0">
+                                  {image.format.toUpperCase()}
+                                </Badge>
+                              </div>
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-lg pointer-events-none">
+                                <div className="bg-white/90 px-2 py-1 rounded text-xs font-medium text-gray-700">
+                                  Click to enlarge
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+      </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedImage(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <img
+              src={selectedImage.src}
+              alt={selectedImage.alt}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="absolute bottom-4 left-4 bg-black/50 text-white px-3 py-1 rounded text-sm">
+              {selectedImage.alt}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

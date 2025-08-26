@@ -1,0 +1,4 @@
+awslabs-mcp-lambda-handler
+boto3
+loguru
+pydantic

@@ -1,0 +1,231 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Bedrock Knowledge Base Retrieval MCP Server with API Gateway and Lambda using streamable HTTP'
+
+Parameters:
+  DeploymentStage:
+    Type: String
+    Default: 'prod'
+    Description: 'API Gateway deployment stage'
+  LogLevel:
+    Type: String
+    Default: 'INFO'
+    Description: 'Logging level for the Lambda function'
+  BedrockRegion:
+    Type: String
+    Default: 'us-west-2'
+    Description: 'AWS region for Bedrock service'
+  KnowledgeBaseId:
+    Type: String
+    Default: 'your-knowledge-base-id-here'
+    Description: 'Bedrock Knowledge Base ID'
+  
+  AllowedKBIds:
+    Type: String
+    Default: ''
+    Description: 'Comma-separated list of allowed Knowledge Base IDs (leave empty to use tag-based discovery)'
+  
+  KBInclusionTagKey:
+    Type: String
+    Default: 'mcp-multirag-kb'
+    Description: 'Tag key to filter knowledge bases by (used when AllowedKBIds is empty)'
+  
+  AWSRegionOverride:
+    Type: String
+    Default: ''
+    Description: 'AWS region for Bedrock services (leave empty to use current region)'
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+        - PolicyName: BedrockKnowledgeBaseAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:ListKnowledgeBases
+                  - bedrock:GetKnowledgeBase
+                  - bedrock:ListDataSources
+                  - bedrock:GetDataSource
+                  - bedrock:ListTagsForResource
+                  - bedrock:Retrieve
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agent:ListKnowledgeBases
+                  - bedrock-agent:GetKnowledgeBase
+                  - bedrock-agent:ListDataSources
+                  - bedrock-agent:GetDataSource
+                  - bedrock-agent:ListTagsForResource
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock-agent-runtime:Retrieve
+                  - bedrock-agent-runtime:RetrieveAndGenerate
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource: 
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/cohere.rerank-v3-5:0'
+                  - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.rerank-v1:0'
+
+  MCPLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-mcp-server'
+      Runtime: python3.13
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder - will be updated'}
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          PYTHONPATH: /var/task
+          LOG_LEVEL: !Ref LogLevel
+          BEDROCK_REGION: !Ref BedrockRegion
+          KNOWLEDGE_BASE_ID: !Ref KnowledgeBaseId
+          ALLOWED_KB_IDS: !Ref AllowedKBIds
+          KB_INCLUSION_TAG_KEY: !Ref KBInclusionTagKey
+          FASTMCP_LOG_LEVEL: !Ref LogLevel
+
+  MCPApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${AWS::StackName}-mcp-api'
+      Description: 'Bedrock Knowledge Base Retrieval MCP Server API Gateway with streamable HTTP'
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  MCPApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MCPApiGateway
+      ParentId: !GetAtt MCPApiGateway.RootResourceId
+      PathPart: 'mcp'
+
+  MCPApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MCPApiGateway
+      ResourceId: !Ref MCPApiResource
+      HttpMethod: ANY
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPLambdaFunction.Arn}/invocations'
+
+  MCPApiProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MCPApiGateway
+      ParentId: !GetAtt MCPApiGateway.RootResourceId
+      PathPart: '{proxy+}'
+
+  MCPApiProxyMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MCPApiGateway
+      ResourceId: !Ref MCPApiProxyResource
+      HttpMethod: ANY
+      AuthorizationType: AWS_IAM
+      RequestParameters:
+        method.request.path.proxy: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPLambdaFunction.Arn}/invocations'
+        RequestParameters:
+          integration.request.path.proxy: 'method.request.path.proxy'
+
+  MCPApiRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MCPApiGateway
+      ResourceId: !GetAtt MCPApiGateway.RootResourceId
+      HttpMethod: ANY
+      AuthorizationType: AWS_IAM
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MCPLambdaFunction.Arn}/invocations'
+
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MCPLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MCPApiGateway}/*/*'
+
+  # Parameter Store entry for MCP endpoint
+  McpEndpointParameter:
+    Type: AWS::SSM::Parameter
+    DependsOn: MCPApiDeployment
+    Properties:
+      Name: '/mcp/endpoints/serverless/bedrock-kb-retrieval'
+      Type: String
+      Value: !Sub 'https://${MCPApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${DeploymentStage}/mcp'
+      Description: 'Bedrock Knowledge Base Retrieval MCP Server endpoint URL'
+
+  MCPApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MCPApiMethod
+      - MCPApiProxyMethod
+      - MCPApiRootMethod
+    Properties:
+      RestApiId: !Ref MCPApiGateway
+      StageName: !Ref DeploymentStage
+
+Conditions:
+  UseCurrentRegion: !Equals [!Ref AWSRegionOverride, '']
+
+Outputs:
+  ApiGatewayUrl:
+    Description: 'API Gateway endpoint URL'
+    Value: !Sub 'https://${MCPApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${DeploymentStage}'
+    Export:
+      Name: !Sub '${AWS::StackName}-api-url'
+  
+  LambdaFunctionName:
+    Description: 'Lambda function name'
+    Value: !Ref MCPLambdaFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-lambda-name'
+  
+  ConfigurationSummary:
+    Description: 'Configuration summary'
+    Value: !Sub |
+      Allowed KB IDs: ${AllowedKBIds}
+      KB Inclusion Tag Key: ${KBInclusionTagKey}
+      Reranking: Always enabled (amazon.rerank-v1:0)
+      AWS Region: ${AWS::Region}

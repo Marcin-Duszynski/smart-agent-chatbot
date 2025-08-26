@@ -1,0 +1,33 @@
+# CDK files and outputs
+cdk/
+*.out/
+venv/
+__pycache__/
+
+# Git files
+.git/
+.gitignore
+
+# Node modules
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Documentation
+README.md
+*.md

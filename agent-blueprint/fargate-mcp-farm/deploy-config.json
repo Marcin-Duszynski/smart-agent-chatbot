@@ -1,0 +1,78 @@
+{
+  "deployment": {
+    "region": "us-west-2",
+    "stage": "prod",
+    "servers": {
+      "playwright-mcp": {
+        "enabled": true,
+        "stack_name": "playwright-mcp-fargate",
+        "description": "Playwright MCP Server on AWS Fargate",
+        "type": "fargate",
+        "config": {
+          "cpu": 1024,
+          "memory": 2048,
+          "port": 8931,
+          "desired_count": 1,
+          "max_capacity": 5,
+          "min_capacity": 1
+        }
+      },
+      "python-mcp": {
+        "enabled": true,
+        "stack_name": "python-mcp-fargate",
+        "description": "Python MCP Server on AWS Fargate with Pyodide",
+        "type": "fargate",
+        "config": {
+          "cpu": 2048,
+          "memory": 4096,
+          "port": 3001,
+          "desired_count": 1,
+          "max_capacity": 10,
+          "min_capacity": 1
+        }
+      }
+    }
+  },
+  "environment_variables": {
+    "playwright-mcp": {
+      "NODE_ENV": "production",
+      "PORT": "8931",
+      "LOG_LEVEL": "info"
+    },
+    "python-mcp": {
+      "NODE_ENV": "production",
+      "PORT": "3001",
+      "LOG_LEVEL": "info",
+      "PYODIDE_CACHE_PATH": "/pyodide-cache"
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "log_retention_days": 7,
+    "container_insights": true,
+    "health_check": {
+      "path": "/health",
+      "interval": 30,
+      "timeout": 10,
+      "retries": 3,
+      "start_period": 60
+    }
+  },
+  "auto_scaling": {
+    "cpu_target": 70,
+    "memory_target": 80,
+    "scale_in_cooldown": 300,
+    "scale_out_cooldown": 120
+  },
+  "security": {
+    "vpc_cidr": "10.0.0.0/16",
+    "public_subnet_cidrs": ["10.0.1.0/24", "10.0.2.0/24"],
+    "private_subnet_cidrs": ["10.0.3.0/24", "10.0.4.0/24"],
+    "nat_gateways": 1
+  },
+  "cost_optimization": {
+    "ecr_lifecycle_rules": true,
+    "log_retention_days": 7,
+    "single_nat_gateway": true
+  }
+}

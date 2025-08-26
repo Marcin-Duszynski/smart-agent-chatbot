@@ -1,0 +1,3 @@
+tavily-python
+awslabs-mcp-lambda-handler
+requests

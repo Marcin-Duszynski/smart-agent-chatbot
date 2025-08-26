@@ -1,0 +1,22 @@
+{
+  "name": "python-mcp-server",
+  "version": "0.7.2",
+  "description": "MCP Run Python Server - Execute Python code safely using Pyodide",
+  "transport": "streamable_http",
+  "port": 3001,
+  "healthcheck": {
+    "endpoint": "/mcp",
+    "timeout": 10000,
+    "interval": 30000
+  },
+  "resources": {
+    "cpu": 2048,
+    "memory": 4096
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "PORT": "3001",
+    "LOG_LEVEL": "info",
+    "PYODIDE_CACHE_PATH": "/pyodide-cache"
+  }
+}

@@ -1,0 +1,5 @@
+awslabs-mcp-lambda-handler
+boto3>=1.39.4
+pydantic
+loguru
+typing-extensions
