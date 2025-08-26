@@ -31,7 +31,7 @@ The platform supports both local development and cloud deployment with a compreh
 
 <img src="docs/images/architecture-overview.png" 
      alt="Architecture Overview" 
-     width="1000">
+     width="1200">
 
 ### 1) Cloud Deployment
 - **Frontend & Backend**: Deployed as containerized tasks on AWS Fargate
@@ -78,6 +78,10 @@ Business-specific tools tailored to your requirements:
 - **Visualization Creator**: Create interactive charts and visualizations from data
 - **Bedrock Code Interpreter**: Execute Python code using AWS Bedrock Code Interpreter with automatic file download support
 
+<img src="docs/images/custom-tools.png" 
+     alt="Custom Tools" 
+     width="600">
+
 ### MCP Servers
 Modular Context Protocol servers providing external integrations:
 
@@ -87,6 +91,11 @@ Modular Context Protocol servers providing external integrations:
 - **Bedrock Knowledge Base Retrieval**: Query Amazon Bedrock Knowledge Bases using natural language
 - **Tavily Web Search**: Perform web search using Tavily AI
 
+<img src="docs/images/mcp-server.png" 
+     alt="SubAgent" 
+     width="600">
+
+
 #### Stateful MCP Servers (ECS)
 - **Playwright Browser**: Browser automation and web scraping using Playwright
 - **Python Runtime**: Execute Python code safely in a sandboxed environment using Pyodide
@@ -94,7 +103,12 @@ Modular Context Protocol servers providing external integrations:
 ### Agents (Sub-Agents)
 Specialized AI agents for complex workflows:
 - **Spending Analysis Tool**: Personal spending pattern analysis with demographic comparisons and behavioral insights
-- **Financial Narrative Tool**: Creative storytelling tool that transforms spending data into humorous narratives with AI-generated images
+- **Financial Narrative Tool**: Creative storytelling tool that transforms spending data into narratives with AI-generated images
+
+<img src="docs/images/sub-agent.png" 
+     alt="SubAgent" 
+     width="600">
+
 
 ### Adding MCP Servers
 

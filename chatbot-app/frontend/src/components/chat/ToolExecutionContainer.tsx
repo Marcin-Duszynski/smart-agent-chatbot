@@ -132,10 +132,10 @@ export const ToolExecutionContainer: React.FC<ToolExecutionContainerProps> = ({ 
           
           let filesAdded = 0;
           
-          // Download each file from backend session directory
+          // Download each file from backend session directory using static file serving
           for (const fileName of filesList) {
             try {
-              const fileUrl = getApiUrl(`files/download/${sessionId}/${toolUseId}/${fileName}`);
+              const fileUrl = getApiUrl(`output/sessions/${sessionId}/${toolUseId}/${fileName}`);
               const response = await fetch(fileUrl);
               
               if (response.ok) {

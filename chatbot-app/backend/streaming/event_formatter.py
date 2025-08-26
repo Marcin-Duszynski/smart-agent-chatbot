@@ -137,12 +137,17 @@ class StreamEventFormatter:
                         pass
                     elif tool_name == 'run_python_code':
                         print(f"🎯 DETECTED PYTHON MCP TOOL: {tool_name}")
-                        # Use Base64 interception for file handling
-                        processed_text, file_info = StreamEventFormatter._handle_python_mcp_base64(tool_use_id, result_text)
-                        
-                        if file_info:
-                            print(f"📁 Processed and saved {len(file_info)} files for {tool_use_id}")
-                            result_text = processed_text
+                        # Get session_id from tool_info
+                        session_id = tool_info.get('session_id') if tool_info else None
+                        if session_id:
+                            # Use Base64 interception for file handling with session_id
+                            processed_text, file_info = StreamEventFormatter._handle_python_mcp_base64(tool_use_id, result_text, session_id)
+                            
+                            if file_info:
+                                print(f"📁 Processed and saved {len(file_info)} files for {tool_use_id}")
+                                result_text = processed_text
+                        else:
+                            print(f"⚠️ No session_id found for Python MCP tool: {tool_use_id}")
                         StreamEventFormatter._save_agent_tool_result(tool_use_id, result_text)
                     else:
                         print(f"🔍 NON-MCP TOOL: {tool_name} (tool_type: {tool_info.get('tool_type') if tool_info else 'None'})")
@@ -230,7 +235,7 @@ class StreamEventFormatter:
     
 
     @staticmethod
-    def _handle_python_mcp_base64(tool_use_id: str, result_text: str) -> Tuple[str, List[Dict[str, Any]]]:
+    def _handle_python_mcp_base64(tool_use_id: str, result_text: str, session_id: str) -> Tuple[str, List[Dict[str, Any]]]:
         """
         Intercept Base64 file data from Python MCP results and save to local files
         Returns: (processed_text_without_base64, file_info_list)
@@ -246,29 +251,9 @@ class StreamEventFormatter:
             # Pattern to match Base64 data URLs: data:application/zip;base64,{base64_data}
             base64_pattern = r'<download[^>]*?>data:([^;]+);base64,([A-Za-z0-9+/=]+)</download>'
             
-            print(f"🔍 Base64 interception start for {tool_use_id}")
-            print(f"🔍 Result text length: {len(result_text)}")
-            print(f"🔍 Looking for pattern: {base64_pattern}")
-            print(f"🔍 First 500 chars of result: {result_text[:500]}")
-            
             # Check if pattern exists
             import re
             matches = re.findall(base64_pattern, result_text)
-            print(f"🔍 Found {len(matches)} Base64 matches")
-            
-            if matches:
-                print(f"🔍 First match MIME type: {matches[0][0]}")
-                print(f"🔍 First match Base64 length: {len(matches[0][1])}")
-            else:
-                print(f"🔍 No matches found - checking for similar patterns...")
-                download_patterns = re.findall(r'<download[^>]*?>(.*?)</download>', result_text, re.DOTALL)
-                print(f"🔍 Found {len(download_patterns)} download tags")
-                for i, pattern in enumerate(download_patterns[:2]):  # Show first 2
-                    print(f"🔍 Download {i+1}: {pattern[:100]}...")
-                
-                # Check for data: patterns
-                data_patterns = re.findall(r'data:([^;]+);base64,([A-Za-z0-9+/=]{10,100})', result_text)
-                print(f"🔍 Found {len(data_patterns)} data: patterns")
             
             def process_base64_match(match):
                 mime_type = match.group(1)
@@ -292,24 +277,12 @@ class StreamEventFormatter:
                     # Generate filename
                     filename = f"python_output_{len(file_info) + 1}{extension}"
                     
-                    # Create output directory
-                    from agent import get_global_stream_processor
-                    processor = get_global_stream_processor()
-                    session_id = None
-                    if processor and hasattr(processor, 'tool_use_registry'):
-                        tool_info = processor.tool_use_registry.get(tool_use_id)
-                        session_id = tool_info.get('session_id') if tool_info else None
-                    
+                    # Create output directory using provided session_id
                     if session_id:
-                        print(f"💾 Attempting to save Base64 file for session {session_id}")
                         try:
                             session_output_dir = Config.get_session_output_dir(session_id)
                             tool_dir = os.path.join(session_output_dir, tool_use_id)
-                            print(f"💾 Tool directory: {tool_dir}")
-                            print(f"💾 Current working directory: {os.getcwd()}")
-                            print(f"💾 Session output dir exists: {os.path.exists(session_output_dir)}")
                             os.makedirs(tool_dir, exist_ok=True)
-                            print(f"💾 Tool directory created successfully")
                         except Exception as dir_error:
                             print(f"❌ Error creating directory: {dir_error}")
                             return match.group(0)
@@ -317,24 +290,12 @@ class StreamEventFormatter:
                         # Save file
                         try:
                             file_path = os.path.join(tool_dir, filename)
-                            print(f"💾 Saving to: {file_path}")
                             with open(file_path, 'wb') as f:
                                 f.write(file_data)
-                            print(f"💾 File written successfully: {len(file_data)} bytes")
-                            
-                            # Verify file was saved
-                            if os.path.exists(file_path):
-                                actual_size = os.path.getsize(file_path)
-                                print(f"💾 File verified: {actual_size} bytes on disk")
-                            else:
-                                print(f"❌ File verification failed: {file_path} does not exist")
-                                return match.group(0)
                             
                             # Create download URL (relative to session output)
                             relative_path = os.path.relpath(file_path, Config.get_output_dir())
                             download_url = f"/files/{relative_path}"
-                            print(f"💾 Download URL: {download_url}")
-                            print(f"💾 File saved successfully: {filename} ({len(file_data)} bytes)")
                             
                             file_info.append({
                                 'filename': filename,
@@ -362,7 +323,8 @@ class StreamEventFormatter:
             # Process all Base64 matches
             processed_text = re.sub(base64_pattern, process_base64_match, result_text)
             
-            print(f"🔍 Processed Python MCP result: found {len(file_info)} files")
+            if file_info:
+                print(f"💾 Processed Python MCP result: found {len(file_info)} files")
             
         except Exception as e:
             print(f"❌ Error in _handle_python_mcp_base64: {e}")
