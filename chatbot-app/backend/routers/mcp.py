@@ -44,7 +44,8 @@ async def get_mcp_servers(x_session_id: Optional[str] = Header(None)):
             "session_id": session_id
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get MCP servers: {str(e)}")
+        logger.error(f"Failed to get MCP servers: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get MCP servers")
 
 @router.get("/servers/enabled")
 async def get_enabled_mcp_servers(x_session_id: Optional[str] = Header(None)):
@@ -65,7 +66,8 @@ async def get_enabled_mcp_servers(x_session_id: Optional[str] = Header(None)):
             "session_id": session_id
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get enabled MCP servers: {str(e)}")
+        logger.error(f"Failed to get enabled MCP servers: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get enabled MCP servers")
 
 @router.post("/servers/{server_id}/update")
 async def update_mcp_server(server_id: str, server_config: MCPServerConfig, x_session_id: Optional[str] = Header(None)):
@@ -101,7 +103,8 @@ async def update_mcp_server(server_id: str, server_config: MCPServerConfig, x_se
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update MCP server: {str(e)}")
+        logger.error(f"Failed to update MCP server: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update MCP server")
 
 @router.post("/servers/{server_id}/toggle")
 async def toggle_mcp_server(server_id: str, x_session_id: Optional[str] = Header(None)):
@@ -143,7 +146,8 @@ async def toggle_mcp_server(server_id: str, x_session_id: Optional[str] = Header
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to toggle MCP server: {str(e)}")
+        logger.error(f"Failed to toggle MCP server: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to toggle MCP server")
 
 
 @router.post("/servers/test")
@@ -205,7 +209,7 @@ async def test_mcp_server(test_config: MCPServerTestConfig, x_session_id: Option
         logger.error(f"❌ Test failed with error: {str(e)}")
         return {
             "success": False,
-            "message": f"Test failed with error: {str(e)}",
+            "message": "Test failed due to connection error",
             "session_id": x_session_id
         }
 
@@ -251,7 +255,8 @@ async def get_mcp_server_tools(server_id: str, x_session_id: Optional[str] = Hea
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get MCP server tools: {str(e)}")
+        logger.error(f"Failed to get MCP server tools: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get MCP server tools")
 
 @router.post("/servers/add")
 async def add_mcp_server(server_config: MCPServerConfig, x_session_id: Optional[str] = Header(None)):
@@ -291,5 +296,6 @@ async def add_mcp_server(server_config: MCPServerConfig, x_session_id: Optional[
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add MCP server: {str(e)}")
+        logger.error(f"Failed to add MCP server: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to add MCP server")
 

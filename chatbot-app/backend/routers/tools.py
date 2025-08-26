@@ -30,6 +30,40 @@ class AddMcpServerRequest(BaseModel):
     icon: str
     enabled: bool = False
 
+def is_safe_url(url: str) -> bool:
+    """Check if URL is safe from SSRF attacks"""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        
+        if not hostname:
+            return False
+            
+        # Block localhost and loopback addresses
+        if hostname.lower() in ['localhost', '127.0.0.1', '::1']:
+            return False
+            
+        # Block private IP ranges
+        if hostname.startswith(('10.', '192.168.')):
+            return False
+            
+        # Block 172.16-31.x.x range
+        if hostname.startswith('172.'):
+            try:
+                second_octet = int(hostname.split('.')[1])
+                if 16 <= second_octet <= 31:
+                    return False
+            except (ValueError, IndexError):
+                pass
+                
+        # Block link-local addresses
+        if hostname.startswith('169.254.'):
+            return False
+            
+        return True
+    except Exception:
+        return False
+
 async def check_mcp_url_validity(url: str) -> str:
     """Check if MCP URL is valid and reachable
     Returns: 'connected', 'disconnected', or 'invalid'
@@ -42,6 +76,10 @@ async def check_mcp_url_validity(url: str) -> str:
         # Cache Parameter Store URLs as valid to avoid repeated checks
         _mcp_status_cache[url] = ('connected', time.time())
         return 'connected'
+    
+    # Check for SSRF vulnerabilities
+    if not is_safe_url(url):
+        return 'invalid'
     
     # Check cache first
     now = time.time()

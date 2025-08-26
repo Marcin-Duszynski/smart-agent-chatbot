@@ -115,7 +115,8 @@ async def multimodal_stream_chat(
         )
     except Exception as e:
         logging.error(f"Error in multimodal_stream_chat: {str(e)}")
-        return {"error": f"Sorry, I encountered an error: {str(e)}"}
+        logging.error(f"Chat error: {str(e)}")
+        return {"error": "Sorry, I encountered an error processing your request"}
 
 @router.post("/content-blocks")
 async def content_blocks_chat(request: Dict[str, Any], x_session_id: Optional[str] = Header(None)):
@@ -183,7 +184,8 @@ async def content_blocks_chat(request: Dict[str, Any], x_session_id: Optional[st
         
     except Exception as e:
         logging.error(f"Error in content_blocks_chat: {str(e)}")
-        return {"error": f"Sorry, I encountered an error: {str(e)}"}
+        logging.error(f"Chat error: {str(e)}")
+        return {"error": "Sorry, I encountered an error processing your request"}
 
 @router.post("/content-blocks/stream")
 async def content_blocks_stream_chat(request: Dict[str, Any], x_session_id: Optional[str] = Header(None)):
@@ -256,4 +258,5 @@ async def content_blocks_stream_chat(request: Dict[str, Any], x_session_id: Opti
         
     except Exception as e:
         logging.error(f"Error in content_blocks_stream_chat: {str(e)}")
-        return {"error": f"Sorry, I encountered an error: {str(e)}"}
+        logging.error(f"Chat error: {str(e)}")
+        return {"error": "Sorry, I encountered an error processing your request"}

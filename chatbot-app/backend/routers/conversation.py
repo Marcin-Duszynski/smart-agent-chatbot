@@ -21,7 +21,8 @@ async def get_conversation_stats(x_session_id: Optional[str] = Header(None)):
             "session_id": session_id
         }
     except Exception as e:
-        return {"error": f"Failed to get conversation stats: {str(e)}"}
+        logger.error(f"Failed to get conversation stats: {str(e)}")
+        return {"error": "Failed to get conversation stats"}
 
 @router.post("/clear")
 async def clear_conversation(x_session_id: Optional[str] = Header(None)):
@@ -44,7 +45,8 @@ async def clear_conversation(x_session_id: Optional[str] = Header(None)):
                 "message": f"Failed to clear session {session_id}"
             }
     except Exception as e:
-        return {"error": f"Failed to clear conversation: {str(e)}"}
+        logger.error(f"Failed to clear conversation: {str(e)}")
+        return {"error": "Failed to clear conversation"}
 
 @router.post("/export")
 async def export_conversation(request: dict, x_session_id: Optional[str] = Header(None)):
@@ -80,7 +82,8 @@ async def export_conversation(request: dict, x_session_id: Optional[str] = Heade
                 "message": "Failed to export conversation"
             }
     except Exception as e:
-        return {"error": f"Failed to export conversation: {str(e)}"}
+        logger.error(f"Failed to export conversation: {str(e)}")
+        return {"error": "Failed to export conversation"}
 
 @router.get("/memory")
 async def get_conversation_memory(x_session_id: Optional[str] = Header(None)):
@@ -100,7 +103,8 @@ async def get_conversation_memory(x_session_id: Optional[str] = Header(None)):
             "session_id": session_id
         }
     except Exception as e:
-        return {"error": f"Failed to get conversation memory: {str(e)}"}
+        logger.error(f"Failed to get conversation memory: {str(e)}")
+        return {"error": "Failed to get conversation memory"}
 
 @router.post("/recreate_agent")
 async def recreate_agent(x_session_id: Optional[str] = Header(None)):
@@ -116,7 +120,8 @@ async def recreate_agent(x_session_id: Optional[str] = Header(None)):
             "session_id": session_id
         }
     except Exception as e:
-        return {"error": f"Failed to recreate agent: {str(e)}"}
+        logger.error(f"Failed to recreate agent: {str(e)}")
+        return {"error": "Failed to recreate agent"}
 
 @router.get("/health")
 async def conversation_health(x_session_id: Optional[str] = Header(None)):
@@ -142,7 +147,8 @@ async def conversation_health(x_session_id: Optional[str] = Header(None)):
             "session_id": session_id
         }
     except Exception as e:
-        return {"error": f"Health check failed: {str(e)}"}
+        logger.error(f"Health check failed: {str(e)}")
+        return {"error": "Health check failed"}
 
 @router.post("/restore")
 async def restore_conversation(messages: list, x_session_id: Optional[str] = Header(None)):
@@ -165,7 +171,8 @@ async def restore_conversation(messages: list, x_session_id: Optional[str] = Hea
             "session_id": session_id
         }
     except Exception as e:
-        return {"error": f"Failed to restore conversation: {str(e)}"}
+        logger.error(f"Failed to restore conversation: {str(e)}")
+        return {"error": "Failed to restore conversation"}
 
 @router.get("/is_agent_available")
 async def is_agent_available(x_session_id: Optional[str] = Header(None)):
@@ -181,4 +188,5 @@ async def is_agent_available(x_session_id: Optional[str] = Header(None)):
             "session_id": session_id
         }
     except Exception as e:
-        return {"error": f"Failed to check agent availability: {str(e)}"}
+        logger.error(f"Failed to check agent availability: {str(e)}")
+        return {"error": "Failed to check agent availability"}

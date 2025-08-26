@@ -372,11 +372,10 @@ async def download_output_file(path: str):
         # Build full file path
         file_path = os.path.join('output', path)
         
-        # Security check: ensure path is within output directory
-        abs_output_dir = os.path.abspath('output')
-        abs_file_path = os.path.abspath(file_path)
-        
-        if not abs_file_path.startswith(abs_output_dir):
+        # Use existing validation function for better security
+        try:
+            file_path = validate_safe_path('output', path)
+        except HTTPException:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied: path outside output directory"

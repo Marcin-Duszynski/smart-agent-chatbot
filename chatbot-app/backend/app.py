@@ -162,9 +162,10 @@ async def health_check():
             "total_messages": registry_stats["total_messages"]
         }
     except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
         return {
             "status": "unhealthy",
-            "error": str(e)
+            "error": "Service unavailable"
         }
 
 @app.get("/api/health")
@@ -180,9 +181,10 @@ async def health_check_api():
             "total_messages": registry_stats["total_messages"]
         }
     except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
         return {
             "status": "unhealthy",
-            "error": str(e)
+            "error": "Service unavailable"
         }
 
 # Include routers with environment-specific prefixes

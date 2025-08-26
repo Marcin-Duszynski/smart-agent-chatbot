@@ -31,7 +31,7 @@ async def make_nws_request(url: str) -> Optional[Dict[str, Any]]:
             response.raise_for_status()
             return response.json()
         except Exception as e:
-            logger.error(f"NWS API request failed for {url}: {e}")
+            logger.error(f"NWS API request failed: {e}")
             return None
 
 
@@ -53,7 +53,7 @@ async def get_current_weather(latitude: float, longitude: float, agent=None) -> 
         - Only works for US locations
         - Gets data from nearest weather station
     """
-    logger.info(f"Getting current weather for {latitude}, {longitude}")
+    logger.info(f"Getting current weather for coordinates [lat: {latitude:.2f}, lon: {longitude:.2f}]")
     
     # Validate coordinates
     if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
