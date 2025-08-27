@@ -24,6 +24,7 @@ This demo platform serves as a testing ground for AI agents tailored to specific
 - **Dual Deployment**: Local development and cloud deployment options
 - **Quick Setup**: One-command deployment for both environments
 - **Session Management**: Automatic session isolation with fresh start on refresh
+- **AgentCore Observability**: Full trace and log monitoring with AWS CloudWatch integration
 
 ## Architecture
 
@@ -363,6 +364,87 @@ See `DEPLOYMENT.md` for detailed AWS deployment instructions using CDK.
 2. **Custom Tools**: Create business-specific functionality
 3. **MCP Servers**: Develop external service integrations
 4. **Agents**: Build specialized AI workflows
+
+## 🔍 AgentCore Observability Setup
+
+This application includes full AgentCore observability integration with AWS CloudWatch for comprehensive trace and log monitoring.
+
+### Prerequisites
+- AWS CLI installed and configured
+- AWS credentials with appropriate permissions (see below)
+- CloudWatch Transaction Search enabled
+
+### Required AWS Permissions
+Your AWS role/user needs these permissions:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream", 
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "arn:aws:logs:*:*:log-group:agents/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:PutMetricData"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### Quick Setup
+1. **Run the observability setup script:**
+   ```bash
+   chmod +x setup-observability.sh
+   ./setup-observability.sh
+   ```
+   This will:
+   - Create CloudWatch log groups and streams
+   - Generate the `.env` file with OTEL configuration
+   - Provide next steps for enabling Transaction Search
+
+2. **Enable CloudWatch Transaction Search:**
+   - Open [CloudWatch Console](https://console.aws.amazon.com/cloudwatch/)
+   - Navigate to **Application Signals (APM)** → **Transaction search**
+   - Choose **Enable Transaction Search**
+   - Select **ingest spans as structured logs**
+   - Choose **Save**
+
+3. **Start the application:**
+   ```bash
+   cd chatbot-app && ./start.sh
+   ```
+
+### Viewing Traces
+After setup, you can monitor your agent interactions in:
+
+- **CloudWatch Application Signals**: Traces and performance metrics
+- **CloudWatch GenAI Observability Dashboard**: Dedicated AgentCore monitoring  
+- **CloudWatch Logs**: Detailed log streams with structured data
+- **Session-based filtering**: Use `session.id` to track individual conversations
+
+### What Gets Tracked
+- **HTTP Requests**: All API calls and streaming endpoints
+- **Bedrock Calls**: LLM inference requests and responses
+- **Tool Executions**: Individual tool calls with inputs/outputs
+- **Session Context**: Conversation-level trace grouping
+- **Error Tracking**: Failed operations and exceptions
+
+### Features Implemented
+✅ **Session ID Context Propagation**: Each conversation appears as a unified trace  
+✅ **Tool Execution Spans**: All tool calls are instrumented with `execute_tool.*` spans  
+✅ **Auto-instrumentation**: FastAPI, Bedrock, and HTTP calls automatically traced  
+✅ **Real-time Monitoring**: Ultra-fast batch processing for immediate trace visibility  
 
 ## License
 

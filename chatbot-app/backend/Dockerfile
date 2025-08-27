@@ -27,5 +27,22 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application
-CMD ["python", "app.py"]
+# Set default environment variables for OTEL (can be overridden by container environment)
+ENV OTEL_PYTHON_DISTRO=aws_distro
+ENV OTEL_PYTHON_CONFIGURATOR=aws_configurator
+ENV OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+ENV OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=http/protobuf
+ENV OTEL_LOGS_EXPORTER=otlp
+ENV OTEL_TRACES_EXPORTER=otlp
+ENV OTEL_EXPORTER_OTLP_LOGS_HEADERS=x-aws-log-group=agents/strands-agent-logs,x-aws-metric-namespace=agentsd
+ENV OTEL_RESOURCE_ATTRIBUTES=service.name=strands-chatbot
+ENV AGENT_OBSERVABILITY_ENABLED=true
+ENV AWS_REGION=us-west-2
+
+# OTEL batch processing settings for real-time traces
+ENV OTEL_BSP_SCHEDULE_DELAY=100
+ENV OTEL_BSP_MAX_EXPORT_BATCH_SIZE=1
+ENV OTEL_BSP_EXPORT_TIMEOUT=5000
+
+# Run the application with OpenTelemetry instrumentation
+CMD ["sh", "-c", "echo 'Starting with OTEL instrumentation...' && opentelemetry-instrument --version && opentelemetry-instrument python app.py"]

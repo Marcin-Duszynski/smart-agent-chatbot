@@ -41,13 +41,13 @@ AVAILABLE_MODELS = [
         "description": "Anthropic's most advanced reasoning model"
     },
     {
-        "id": "us.anthropic.claude-sonnet-3-5-20241022-v2:0",
+        "id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         "name": "Claude 3.5 Sonnet v2",
         "provider": "Anthropic",
         "description": "Fast, intelligent model for complex tasks"
     },
     {
-        "id": "us.anthropic.claude-haiku-3-5-20241022-v1:0",
+        "id": "anthropic.claude-3-5-haiku-20241022-v1:0",
         "name": "Claude 3.5 Haiku",
         "provider": "Anthropic",
         "description": "Fast and affordable model for simple tasks"

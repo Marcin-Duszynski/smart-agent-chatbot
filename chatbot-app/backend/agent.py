@@ -7,6 +7,7 @@ from strands import Agent
 from strands.models import BedrockModel
 from unified_tool_manager import UnifiedToolManager
 from streaming.event_processor import StreamEventProcessor
+from opentelemetry import baggage, context
 
 logger = logging.getLogger(__name__)
 
@@ -415,26 +416,6 @@ class ChatbotAgent:
     async def stream_async(self, message: str, file_paths: List[str] = None, session_id: str = None) -> AsyncGenerator[str, None]:
         """Stream responses using the dedicated StreamEventProcessor with MCP context management"""
         
-        # LAZY AGENT RECREATION: Check if config changed OR agent is None and recreate if needed
-        if (self.session_manager and self.session_manager.has_config_changes()) or not self.agent:
-            if self.session_manager and self.session_manager.has_config_changes():
-                print(f"🔄 Config changed detected - recreating agent before chat")
-            else:
-                print(f"🔄 Agent is None - creating agent before chat")
-            try:
-                await self.create_agent_with_all_tools()
-                if self.session_manager:
-                    self.session_manager.reset_config_change_flags()
-                print(f"🔄 Agent recreation completed")
-            except Exception as e:
-                logger.error(f"Failed to recreate agent: {e}")
-                yield f"Sorry, I encountered an error updating my configuration: {str(e)}"
-                return
-        
-        if not self.agent:
-            yield f"Echo: {message} (Agent not available - please configure AWS credentials for Bedrock)"
-            return
-        
         # Use provided session_id or get from session_manager
         if not session_id:
             if self.session_manager and hasattr(self.session_manager, 'session_id'):
@@ -444,20 +425,48 @@ class ChatbotAgent:
                 import uuid
                 session_id = f"stream_{uuid.uuid4().hex[:8]}"
         
-        print(f"🔍 Agent - Using session_id for streaming: {session_id}")
-        logger.info(f"🔍 Agent - Using session_id for streaming: {session_id}")
+        # Set session ID in OpenTelemetry baggage for context propagation
+        ctx = baggage.set_baggage("session.id", session_id)
+        token = context.attach(ctx)
         
         try:
+            # LAZY AGENT RECREATION: Check if config changed OR agent is None and recreate if needed
+            if (self.session_manager and self.session_manager.has_config_changes()) or not self.agent:
+                if self.session_manager and self.session_manager.has_config_changes():
+                    print(f"🔄 Config changed detected - recreating agent before chat")
+                else:
+                    print(f"🔄 Agent is None - creating agent before chat")
+                try:
+                    await self.create_agent_with_all_tools()
+                    if self.session_manager:
+                        self.session_manager.reset_config_change_flags()
+                    print(f"🔄 Agent recreation completed")
+                except Exception as e:
+                    logger.error(f"Failed to recreate agent: {e}")
+                    yield f"Sorry, I encountered an error updating my configuration: {str(e)}"
+                    return
+            
+            if not self.agent:
+                yield f"Echo: {message} (Agent not available - please configure AWS credentials for Bedrock)"
+                return
+            
+            print(f"🔍 Agent - Using session_id for streaming: {session_id}")
+            logger.info(f"🔍 Agent - Using session_id for streaming: {session_id}")
+            
             # All MCP clients (both stateful and stateless) are managed by MCPSessionManager
             # No need for separate context management - much simpler!
             async for event in self.stream_processor.process_stream(self.agent, message, file_paths, session_id):
                 yield event
-                    
+                        
         except GeneratorExit:
             # Client disconnected - this is normal, don't log as error
             return
-            
+                
         except Exception as e:
             # Only log actual errors, not normal disconnections
             logger.debug(f"Stream error for session {session_id}: {e}")
             yield f"Sorry, I encountered an error during streaming: {str(e)}"
+            
+        finally:
+            # Detach the context to clean up
+            context.detach(token)

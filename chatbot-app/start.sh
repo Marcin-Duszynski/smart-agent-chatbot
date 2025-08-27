@@ -33,8 +33,17 @@ echo "🔧 Starting backend server..."
 cd backend
 source venv/bin/activate
 
-# Start backend and capture the actual port it's using
-python app.py > ../backend.log 2>&1 &
+# Load environment variables from .env file if it exists
+if [ -f .env ]; then
+    echo "📋 Loading environment variables from .env"
+    set -a
+    source .env
+    set +a
+    echo "✅ Environment variables loaded: OTEL_PYTHON_DISTRO=$OTEL_PYTHON_DISTRO"
+fi
+
+# Start backend and capture the actual port it's using with environment
+env $(grep -v '^#' .env 2>/dev/null | xargs) opentelemetry-instrument python app.py > ../backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
 

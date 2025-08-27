@@ -23,9 +23,10 @@ def kill_process_on_port(port: int):
         import psutil
         
         # Find processes using the port
-        for proc in psutil.process_iter(['pid', 'name', 'connections']):
+        for proc in psutil.process_iter(['pid', 'name']):
             try:
-                connections = proc.info['connections']
+                # Get connections directly from process
+                connections = proc.connections()
                 if connections:
                     for conn in connections:
                         if hasattr(conn, 'laddr') and conn.laddr and conn.laddr.port == port:
@@ -36,7 +37,7 @@ def kill_process_on_port(port: int):
                                 proc.wait(timeout=3)
                             except psutil.TimeoutExpired:
                                 proc.kill()  # Force kill if needed
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, AttributeError):
                 continue
     except ImportError:
         print(f"psutil not available - cannot automatically kill processes on port {port}")

@@ -9,6 +9,8 @@ from mcp.client.streamable_http import streamablehttp_client
 from strands.tools.mcp import MCPClient
 from strands.tools.tools import PythonAgentTool
 from mcp_session_manager import MCPSessionManager
+from opentelemetry import trace, baggage, context
+import functools
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,9 @@ class UnifiedToolManager:
         
         # Initialize MCP session manager
         self.mcp_session_manager = MCPSessionManager()
+        
+        # Initialize OpenTelemetry
+        self.tracer = trace.get_tracer(__name__)
         
         self.load_config()
         self.load_strands_tool_functions()
@@ -437,6 +442,124 @@ class UnifiedToolManager:
             tool_function=http_tool_function
         )
     
+    def _wrap_tool_with_otel_span(self, tool, tool_name: str = None):
+        """Wrap a tool function with OpenTelemetry instrumentation"""
+        if not tool_name:
+            # Try to extract tool name from different tool types
+            if hasattr(tool, 'tool_spec') and isinstance(tool.tool_spec, dict):
+                tool_name = tool.tool_spec.get('name', 'unknown_tool')
+            elif hasattr(tool, 'name'):
+                tool_name = tool.name
+            elif hasattr(tool, '__name__'):
+                tool_name = tool.__name__
+            else:
+                tool_name = 'unknown_tool'
+        
+        # For function tools, wrap the actual function
+        if hasattr(tool, '__call__'):
+            original_func = tool
+            
+            @functools.wraps(original_func)
+            def wrapped_sync_tool(*args, **kwargs):
+                # Get session ID from current baggage context
+                session_id = baggage.get_baggage("session.id")
+                
+                with self.tracer.start_as_current_span(f"execute_tool.{tool_name}") as span:
+                    # Add span attributes
+                    span.set_attribute("tool.name", tool_name)
+                    span.set_attribute("tool.type", "function")
+                    if session_id:
+                        span.set_attribute("session.id", session_id)
+                    
+                    # Add input parameters as attributes (limit size for performance)
+                    if kwargs:
+                        for key, value in kwargs.items():
+                            str_value = str(value)
+                            if len(str_value) <= 100:  # Limit attribute size
+                                span.set_attribute(f"tool.input.{key}", str_value)
+                    
+                    try:
+                        result = original_func(*args, **kwargs)
+                        span.set_attribute("tool.status", "success")
+                        return result
+                    except Exception as e:
+                        span.set_attribute("tool.status", "error")
+                        span.set_attribute("tool.error", str(e))
+                        raise
+            
+            @functools.wraps(original_func)
+            async def wrapped_async_tool(*args, **kwargs):
+                # Get session ID from current baggage context
+                session_id = baggage.get_baggage("session.id")
+                
+                with self.tracer.start_as_current_span(f"execute_tool.{tool_name}") as span:
+                    # Add span attributes
+                    span.set_attribute("tool.name", tool_name)
+                    span.set_attribute("tool.type", "async_function")
+                    if session_id:
+                        span.set_attribute("session.id", session_id)
+                    
+                    # Add input parameters as attributes (limit size for performance)
+                    if kwargs:
+                        for key, value in kwargs.items():
+                            str_value = str(value)
+                            if len(str_value) <= 100:  # Limit attribute size
+                                span.set_attribute(f"tool.input.{key}", str_value)
+                    
+                    try:
+                        result = await original_func(*args, **kwargs)
+                        span.set_attribute("tool.status", "success")
+                        return result
+                    except Exception as e:
+                        span.set_attribute("tool.status", "error")
+                        span.set_attribute("tool.error", str(e))
+                        raise
+            
+            # Check if the function is async
+            if asyncio.iscoroutinefunction(original_func):
+                return wrapped_async_tool
+            else:
+                return wrapped_sync_tool
+        
+        # For tool objects (like PythonAgentTool), wrap their call method
+        elif hasattr(tool, '__call__') and hasattr(tool, 'tool_spec'):
+            original_call = tool.__call__
+            
+            @functools.wraps(original_call)
+            def wrapped_tool_call(*args, **kwargs):
+                # Get session ID from current baggage context
+                session_id = baggage.get_baggage("session.id")
+                
+                with self.tracer.start_as_current_span(f"execute_tool.{tool_name}") as span:
+                    # Add span attributes
+                    span.set_attribute("tool.name", tool_name)
+                    span.set_attribute("tool.type", "agent_tool")
+                    if session_id:
+                        span.set_attribute("session.id", session_id)
+                    
+                    # Add input parameters as attributes (limit size for performance)
+                    if kwargs:
+                        for key, value in kwargs.items():
+                            str_value = str(value)
+                            if len(str_value) <= 100:  # Limit attribute size
+                                span.set_attribute(f"tool.input.{key}", str_value)
+                    
+                    try:
+                        result = original_call(*args, **kwargs)
+                        span.set_attribute("tool.status", "success")
+                        return result
+                    except Exception as e:
+                        span.set_attribute("tool.status", "error")
+                        span.set_attribute("tool.error", str(e))
+                        raise
+            
+            # Replace the call method with wrapped version
+            tool.__call__ = wrapped_tool_call
+            return tool
+        
+        # Return tool as-is if we can't wrap it
+        return tool
+
     # Session-aware MCP methods
     def get_tools_for_session(self, backend_session_id: str, session_config: Dict = None) -> Tuple[List[Any], List[Any]]:
         """Get tools for a specific backend session (includes session-aware MCP tools)"""
@@ -461,10 +584,19 @@ class UnifiedToolManager:
         all_mcp_tools = self.mcp_session_manager.get_tools_for_session(backend_session_id, enabled_servers)
         logger.info(f"MCPSessionManager returned {len(all_mcp_tools)} MCP tools (unified approach)")
         
-        all_tools = strands_tools + custom_tools + all_mcp_tools
-        logger.info(f"Session {backend_session_id}: {len(all_tools)} tools available")
+        # Wrap all tools with OpenTelemetry instrumentation
+        wrapped_tools = []
+        for tool in strands_tools + custom_tools + all_mcp_tools:
+            try:
+                wrapped_tool = self._wrap_tool_with_otel_span(tool)
+                wrapped_tools.append(wrapped_tool)
+            except Exception as e:
+                logger.warning(f"Failed to wrap tool with OTEL span: {e}, using original tool")
+                wrapped_tools.append(tool)
         
-        return all_tools, []  # No separate client management needed
+        logger.info(f"Session {backend_session_id}: {len(wrapped_tools)} tools available (all wrapped with OTEL spans)")
+        
+        return wrapped_tools, []  # No separate client management needed
     
     def cleanup_session(self, backend_session_id: str):
         """Clean up session resources"""
@@ -655,3 +787,13 @@ class UnifiedToolManager:
                 "success": False,
                 "message": f"Test failed with error: {str(e)}"
             }
+
+# Global instance
+_unified_tool_manager_instance = None
+
+def get_unified_tool_manager() -> UnifiedToolManager:
+    """Get the global unified tool manager instance"""
+    global _unified_tool_manager_instance
+    if _unified_tool_manager_instance is None:
+        _unified_tool_manager_instance = UnifiedToolManager()
+    return _unified_tool_manager_instance

@@ -20,3 +20,4 @@ anyio>=3.6.0
 
 # System utilities
 psutil>=5.8.0
+aws-opentelemetry-distro>=0.10.1
