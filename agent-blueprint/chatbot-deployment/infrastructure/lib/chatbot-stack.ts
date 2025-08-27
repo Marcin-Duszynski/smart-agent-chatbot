@@ -4,6 +4,7 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
 // Region-specific configuration
@@ -92,6 +93,48 @@ export class ChatbotStack extends cdk.Stack {
       })
     );
 
+    // Add CloudWatch permissions for AgentCore Observability
+    backendTaskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'logs:CreateLogStream',
+          'logs:PutLogEvents',
+          'cloudwatch:PutMetricData'
+        ],
+        resources: [
+          `arn:aws:logs:${this.region}:${this.account}:log-group:agents/strands-agent-logs`,
+          `arn:aws:logs:${this.region}:${this.account}:log-group:agents/strands-agent-logs:*`
+        ]
+      })
+    );
+
+    // Add X-Ray permissions for trace export
+    backendTaskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          'xray:PutTraceSegments',
+          'xray:PutTelemetryRecords'
+        ],
+        resources: ['*']
+      })
+    );
+
+    // Import existing AgentCore Observability Log Group
+    const agentObservabilityLogGroup = logs.LogGroup.fromLogGroupName(this, 'AgentObservabilityLogGroup', 'agents/strands-agent-logs');
+
+    // Generate unique log stream name
+    const logStreamName = `otel-auto-${Math.random().toString(36).substring(2, 11)}`;
+    
+    // Create OTEL log stream
+    new logs.LogStream(this, 'OtelLogStream', {
+      logGroup: agentObservabilityLogGroup,
+      logStreamName: logStreamName,
+      removalPolicy: cdk.RemovalPolicy.RETAIN
+    });
+
+
 
     // Backend Container
     const backendContainer = backendTaskDefinition.addContainer('ChatbotBackendContainer', {
@@ -104,6 +147,22 @@ export class ChatbotStack extends cdk.Stack {
         CORS_ORIGINS: '*',
         FORCE_UPDATE: new Date().toISOString(),
         AWS_DEFAULT_REGION: this.region,
+        // AgentCore Observability - OTEL Configuration
+        OTEL_PYTHON_DISTRO: 'aws_distro',
+        OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
+        OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
+        OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: 'http/protobuf',
+        OTEL_LOGS_EXPORTER: 'otlp',
+        OTEL_TRACES_EXPORTER: 'otlp',
+        OTEL_EXPORTER_OTLP_LOGS_HEADERS: `x-aws-log-group=agents/strands-agent-logs,x-aws-log-stream=${logStreamName},x-aws-metric-namespace=agentsd`,
+        OTEL_RESOURCE_ATTRIBUTES: 'service.name=strands-chatbot',
+        AGENT_OBSERVABILITY_ENABLED: 'true',
+        AWS_REGION: this.region,
+        OTEL_LOG_LEVEL: 'DEBUG',
+        // OTEL batch processing settings for real-time traces
+        OTEL_BSP_SCHEDULE_DELAY: '100',
+        OTEL_BSP_MAX_EXPORT_BATCH_SIZE: '1',
+        OTEL_BSP_EXPORT_TIMEOUT: '5000',
       },
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: 'chatbot-backend',
@@ -289,6 +348,16 @@ export class ChatbotStack extends cdk.Stack {
       exportName: `${this.stackName}-vpc-cidr`
     });
 
+    // AgentCore Observability Outputs
+    new cdk.CfnOutput(this, 'ObservabilityLogGroupName', {
+      value: 'agents/strands-agent-logs',
+      description: 'CloudWatch Log Group for AgentCore Observability'
+    });
+
+    new cdk.CfnOutput(this, 'ObservabilitySetupNote', {
+      value: 'Remember to enable CloudWatch Transaction Search for full observability',
+      description: 'AgentCore Observability Setup Reminder'
+    });
 
   }
 
