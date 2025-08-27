@@ -50,6 +50,11 @@ class Config:
         Returns:
             Path to session's isolated output directory
         """
+        # Validate session_id to prevent path traversal
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', session_id):
+            raise ValueError(f"Invalid session_id format: {session_id}")
+        
         session_output = os.path.join(cls.OUTPUT_DIR, "sessions", session_id)
         os.makedirs(session_output, exist_ok=True)
         return session_output

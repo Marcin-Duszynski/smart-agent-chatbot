@@ -73,7 +73,7 @@ async def chat_endpoint(request: dict, x_session_id: Optional[str] = Header(None
     except Exception as e:
         logging.error(f"Error in chat_endpoint: {str(e)}")
         return {
-            "error": f"Sorry, I encountered an error: {str(e)}"
+            "error": "Sorry, I encountered an internal error. Please try again."
         }
 
 @router.post("/multimodal")

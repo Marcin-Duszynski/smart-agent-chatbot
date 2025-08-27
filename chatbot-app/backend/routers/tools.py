@@ -32,6 +32,7 @@ class AddMcpServerRequest(BaseModel):
 
 def is_safe_url(url: str) -> bool:
     """Check if URL is safe from SSRF attacks"""
+    import ipaddress
     try:
         parsed = urlparse(url)
         hostname = parsed.hostname
@@ -39,26 +40,31 @@ def is_safe_url(url: str) -> bool:
         if not hostname:
             return False
             
-        # Block localhost and loopback addresses
-        if hostname.lower() in ['localhost', '127.0.0.1', '::1']:
+        # Only allow HTTPS and specific domains
+        if parsed.scheme not in ['https']:
             return False
             
-        # Block private IP ranges
-        if hostname.startswith(('10.', '192.168.')):
+        # Allowlist of safe domains for MCP endpoints
+        allowed_domains = [
+            'execute-api.us-west-2.amazonaws.com',
+            'execute-api.us-east-1.amazonaws.com', 
+            'execute-api.eu-west-1.amazonaws.com',
+            'execute-api.ap-northeast-2.amazonaws.com'
+        ]
+        
+        # Check if hostname is in allowlist
+        if not any(hostname.endswith(domain) for domain in allowed_domains):
             return False
             
-        # Block 172.16-31.x.x range
-        if hostname.startswith('172.'):
-            try:
-                second_octet = int(hostname.split('.')[1])
-                if 16 <= second_octet <= 31:
-                    return False
-            except (ValueError, IndexError):
-                pass
-                
-        # Block link-local addresses
-        if hostname.startswith('169.254.'):
-            return False
+        # Additional IP-based checks for bypasses
+        try:
+            ip = ipaddress.ip_address(hostname)
+            # Block all private/reserved ranges
+            if ip.is_private or ip.is_loopback or ip.is_reserved:
+                return False
+        except ValueError:
+            # Not an IP address, continue with hostname validation
+            pass
             
         return True
     except Exception:

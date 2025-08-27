@@ -15,14 +15,52 @@ def validate_safe_path(base_path: str, user_input: str) -> str:
     Validate that the user input doesn't contain path traversal attempts
     and return the safe absolute path within the base directory.
     """
+    import urllib.parse
+    
+    # Decode URL encoding first to catch encoded traversal attempts
+    try:
+        user_input = urllib.parse.unquote(user_input)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid path: malformed URL encoding"
+        )
+    
     # Remove any leading/trailing whitespace and slashes
     user_input = user_input.strip().strip('/')
     
-    # Check for obvious path traversal attempts
-    if '..' in user_input or user_input.startswith('/'):
+    # Check for path traversal attempts (including various encodings)
+    dangerous_patterns = [
+        '..',           # Standard path traversal
+        '..\\',         # Windows path traversal
+        '../',          # Unix path traversal
+        '%2e%2e',       # URL encoded ..
+        '%2f',          # URL encoded /
+        '%5c',          # URL encoded \
+        '\\',           # Windows separator
+        chr(0),         # Null byte
+    ]
+    
+    user_lower = user_input.lower()
+    for pattern in dangerous_patterns:
+        if pattern in user_lower:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid path: path traversal attempts are not allowed"
+            )
+    
+    # Check for absolute paths
+    if user_input.startswith('/') or (len(user_input) > 1 and user_input[1] == ':'):
         raise HTTPException(
             status_code=400,
-            detail="Invalid path: path traversal attempts are not allowed"
+            detail="Invalid path: absolute paths are not allowed"
+        )
+    
+    # Only block null bytes and other dangerous control characters
+    if chr(0) in user_input or any(ord(c) < 32 and c not in ['\t'] for c in user_input):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid path: contains illegal control characters"
         )
     
     # Build the full path

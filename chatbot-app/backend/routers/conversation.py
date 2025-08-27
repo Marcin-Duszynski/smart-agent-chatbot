@@ -57,14 +57,20 @@ async def export_conversation(request: dict, x_session_id: Optional[str] = Heade
         
         export_file = request.get("filename", "conversation_export.json")
         
-        # Ensure the filename has .json extension
-        if not export_file.endswith('.json'):
-            export_file += '.json'
-        
-        # Export to output directory
-        output_dir = "output"
-        os.makedirs(output_dir, exist_ok=True)
-        export_path = os.path.join(output_dir, export_file)
+        # Validate filename for security
+        from .files import validate_safe_path
+        try:
+            # Ensure the filename has .json extension
+            if not export_file.endswith('.json'):
+                export_file += '.json'
+            
+            # Validate the filename for path traversal
+            export_path = validate_safe_path("output", export_file)
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Invalid filename: {str(e)}"
+            }
         
         success = agent.export_conversation(export_path)
         if success:
