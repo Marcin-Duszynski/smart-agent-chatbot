@@ -33,10 +33,17 @@ else
     echo "✅ Created log group: $LOG_GROUP_NAME"
 fi
 
-# Log Stream will be auto-created by ADOT
+# Create CloudWatch Log Stream
 TIMESTAMP=$(date +%y%m%d)
 LOG_STREAM_NAME="agent-$TIMESTAMP"
-echo "📋 Log stream will be auto-created: $LOG_STREAM_NAME"
+echo "📋 Creating CloudWatch Log Stream: $LOG_STREAM_NAME"
+
+if aws logs describe-log-streams --log-group-name "$LOG_GROUP_NAME" --log-stream-name-prefix "$LOG_STREAM_NAME" --region "$AWS_REGION" 2>/dev/null | grep -q "$LOG_STREAM_NAME"; then
+    echo "✅ Log stream '$LOG_STREAM_NAME' already exists"
+else
+    aws logs create-log-stream --log-group-name "$LOG_GROUP_NAME" --log-stream-name "$LOG_STREAM_NAME" --region "$AWS_REGION"
+    echo "✅ Created log stream: $LOG_STREAM_NAME"
+fi
 
 # Generate .env configuration
 ENV_FILE="chatbot-app/backend/.env"
@@ -51,16 +58,18 @@ OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=http/protobuf
 OTEL_LOGS_EXPORTER=otlp
 OTEL_TRACES_EXPORTER=otlp
 
-# CloudWatch Integration - log stream will be auto-created
-OTEL_EXPORTER_OTLP_LOGS_HEADERS=x-aws-log-group=$LOG_GROUP_NAME,x-aws-metric-namespace=agentsd
+# CloudWatch Integration
+OTEL_EXPORTER_OTLP_LOGS_HEADERS=x-aws-log-group=$LOG_GROUP_NAME,x-aws-log-stream=$LOG_STREAM_NAME,x-aws-metric-namespace=agentsd
 OTEL_RESOURCE_ATTRIBUTES=service.name=strands-chatbot
 
 # Enable AgentCore Observability
 AGENT_OBSERVABILITY_ENABLED=true
 AWS_REGION=$AWS_REGION
+AWS_LOG_GROUP=$LOG_GROUP_NAME
+AWS_LOG_STREAM=$LOG_STREAM_NAME
 
 # Ultra-fast batch processing for real-time traces
-OTEL_BSP_SCHEDULE_DELAY=100 
+OTEL_BSP_SCHEDULE_DELAY=1000
 OTEL_BSP_MAX_EXPORT_BATCH_SIZE=1
 OTEL_BSP_EXPORT_TIMEOUT=5000
 EOF
