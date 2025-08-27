@@ -137,3 +137,7 @@ cdk.out/
 */cdk.out/
 .cdk.staging/
 cdk.context.json
+
+# Deployment files with sensitive info
+deployed-servers.txt
+**/deployed-servers.txt
