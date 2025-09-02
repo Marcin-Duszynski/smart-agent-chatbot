@@ -152,15 +152,37 @@ cd agent-blueprint/fargate-mcp-farm/shared-infrastructure
 
 Deploy stateful MCP servers that use both VPC and shared ALB.
 
+#### Configure Nova Act API Key
+
+Before deploying Nova Act Browser MCP, you need to configure your Nova Act API key:
+
+```bash
+# Navigate to Nova Act MCP directory
+cd agent-blueprint/fargate-mcp-farm/nova-act-mcp/src
+
+# Create .env.local file with your Nova Act API key
+cat > .env.local << EOF
+NOVA_ACT_API_KEY=your_nova_act_api_key_here
+EOF
+
+# Note: .env.local is gitignored for security
+# The deployment will automatically create AWS Parameter Store entry with this value
+```
+
+#### Deploy Stateful MCP Servers
+
 ```bash
 # Navigate to fargate MCP farm directory
 cd agent-blueprint/fargate-mcp-farm
 
-# Deploy all stateful MCP servers
-./deploy-all.sh
+# Deploy Nova Act Browser MCP server
+./deploy-all.sh -s nova-act-mcp
+
+# Deploy Python MCP server (optional)
+# ./deploy-all.sh -s python-mcp
 
 # Expected output:
-# ✅ Playwright MCP: http://your-shared-alb.amazonaws.com/playwright/mcp
+# ✅ Nova Act Browser MCP: http://your-shared-alb.amazonaws.com/nova-act/mcp
 # ✅ Python MCP: http://your-shared-alb.amazonaws.com/python/mcp
 ```
 
@@ -214,6 +236,10 @@ Description: Get AWS pricing information
 Name: Tavily Web Search
 URL: https://your-tavily-endpoint.execute-api.region.amazonaws.com/prod/mcp
 Description: Perform web searches
+
+Name: Nova Act Browser
+URL: http://your-shared-alb.amazonaws.com/nova-act/mcp
+Description: Natural language browser automation with Playwright API access
 ```
 
 > **Tip**: For production deployments, you can store endpoints in AWS Parameter Store and reference them using `ssm://parameter-name` format instead of hardcoding URLs.
@@ -255,6 +281,13 @@ Add MCP servers to the configuration:
       "description": "Perform web searches",
       "enabled": true,
       "category": "search"
+    },
+    {
+      "name": "nova-act-browser",
+      "url": "http://your-shared-alb.amazonaws.com/nova-act/mcp",
+      "description": "Natural language browser automation with Playwright API access",
+      "enabled": true,
+      "category": "automation"
     }
   ]
 }
@@ -299,34 +332,54 @@ Try queries that utilize MCP servers:
 
 # Test Web Search (if enabled)
 "Search for the latest AWS announcements"
+
+# Test Nova Act Browser
+"Navigate to https://example.com and take a screenshot"
+"Go to Google and search for 'AWS Lambda'"
+"Click the login button on this page"
 ```
 
 ## Deployment Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Internet                              │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│                 Application Load Balancer                   │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-        ┌─────────────┴─────────────┐
-        │                           │
-┌───────▼────────┐         ┌────────▼────────┐
-│   Frontend     │         │    Backend      │
-│  (Next.js)     │◄────────┤   (FastAPI)     │
-│   ECS Fargate  │         │   ECS Fargate   │
-└────────────────┘         └─────────┬───────┘
-                                     │
-                    ┌────────────────┴────────────────┐
-                    │                                 │
-            ┌───────▼────────┐                ┌──────▼──────┐
-            │  MCP Server 1  │                │ MCP Server N│
-            │ (AWS Lambda)   │       ...      │(AWS Lambda) │
-            │   + API GW     │                │  + API GW   │
-            └────────────────┘                └─────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                Internet                                      │
+└─────────────────────────────┬───────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────────────────────┐
+│                       Application Load Balancer                             │
+└─────────────────────────────┬───────────────────────────────────────────────┘
+                              │
+                ┌─────────────┴─────────────┐
+                │                           │
+        ┌───────▼────────┐         ┌────────▼────────┐
+        │   Frontend     │         │    Backend      │
+        │  (Next.js)     │◄────────┤   (FastAPI)     │
+        │   ECS Fargate  │         │   ECS Fargate   │
+        └────────────────┘         └─────────┬───────┘
+                                             │
+                        ┌────────────────────┼────────────────────┐
+                        │                    │                    │
+                        │    Serverless      │     Stateful       │
+                        │    MCP Farm        │     MCP Farm       │
+                        │                    │                    │
+          ┌─────────────▼──────────┐    ┌────▼─────────┐   ┌─────▼──────────┐
+          │   AWS Documentation   │    │  Nova Act    │   │  Python MCP    │
+          │     (Lambda)          │    │  Browser     │   │   (Fargate)    │
+          │     + API GW          │    │ (Fargate)    │   │ /python/mcp    │
+          └───────────────────────┘    │/nova-act/mcp │   └────────────────┘
+                                       └──────────────┘
+          ┌───────────────────────┐
+          │    AWS Pricing        │
+          │     (Lambda)          │
+          │     + API GW          │
+          └───────────────────────┘
+          
+          ┌───────────────────────┐
+          │  Tavily Web Search    │
+          │     (Lambda)          │
+          │     + API GW          │
+          └───────────────────────┘
 ```
 
 ## Cost Estimation
@@ -358,6 +411,8 @@ Configuration is handled through deployment scripts and infrastructure configura
 
 ### MCP Servers
 
+#### Serverless MCP Servers
+
 Configure in `agent-blueprint/serverless-mcp-farm/deploy-config.json`:
 
 ```json
@@ -374,6 +429,22 @@ Configure in `agent-blueprint/serverless-mcp-farm/deploy-config.json`:
   }
 }
 ```
+
+#### Stateful MCP Servers (Nova Act Browser)
+
+Configure in `agent-blueprint/fargate-mcp-farm/nova-act-mcp/src/.env.local`:
+
+```bash
+# Nova Act API Key (required)
+NOVA_ACT_API_KEY=your_nova_act_api_key_here
+
+# Optional browser settings
+DEFAULT_HEADLESS_MODE=true
+SESSION_TTL_SECONDS=600
+SESSION_CLEANUP_INTERVAL=60
+```
+
+**Note**: The `.env.local` file is automatically gitignored for security. During deployment, the Nova Act API key is stored in AWS Parameter Store as `/nova-act-mcp/api-key` and injected into the container as a secret.
 
 ## Troubleshooting
 
@@ -434,7 +505,7 @@ Configure in `agent-blueprint/serverless-mcp-farm/deploy-config.json`:
 ```bash
 # 1. Delete stateful MCP servers first
 cd agent-blueprint/fargate-mcp-farm
-./destroy-all-mcp.sh
+./destroy-all-mcp.sh -s nova-act-mcp
 
 # 2. Delete shared infrastructure
 cd shared-infrastructure

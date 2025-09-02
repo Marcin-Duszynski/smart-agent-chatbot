@@ -60,7 +60,7 @@ The platform includes two types of MCP server deployments:
 - **Tavily Web Search**: Web search capabilities
 
 #### Stateful MCP Farm (AWS ECS)
-- **Playwright Browser**: Browser automation and web scraping
+- **Nova Act Browser**: Advanced browser automation with natural language control and Playwright API integration
 - **Python Runtime**: Sandboxed Python code execution using Pyodide
 
 ## Tool Management System
@@ -93,7 +93,7 @@ Modular Context Protocol servers providing external integrations:
 ![Home](docs/images/mcp.gif)
 
 #### Stateful MCP Servers (ECS)
-- **Playwright Browser**: Browser automation and web scraping using Playwright
+- **Nova Act Browser**: Advanced browser automation combining natural language instructions with direct Playwright API access. Supports high-level actions like "click the blue submit button" alongside precise element targeting with CSS selectors
 - **Python Runtime**: Execute Python code safely in a sandboxed environment using Pyodide
 
 ![Home](docs/images/browser-mcp.gif)
@@ -307,11 +307,16 @@ The platform includes ready-to-deploy Lambda MCP servers with Streamable HTTP tr
 - **Deployment**: `agent-blueprint/direct-lambda-mcp/tavily-web-search/`
 - **Usage**: Real-time web information and research
 
-### Playwright Browser Server
-- **Purpose**: Browser automation and web scraping capabilities
-- **Deployment**: `agent-blueprint/stateful-mcp/playwright-mcp/`
-- **Usage**: Automated web interactions, screenshot capture, and content extraction
-- **Origin**: https://github.com/microsoft/playwright-mcp
+### Nova Act Browser Server
+- **Purpose**: Hybrid browser automation with natural language control and Playwright API access
+- **Deployment**: `agent-blueprint/fargate-mcp-farm/nova-act-mcp/`
+- **Usage**: Natural language browser interactions ("click the login button") and precise API control (CSS selectors, JavaScript execution)
+- **Features**:
+  - High-level natural language actions (navigate, act, extract)
+  - Low-level Playwright API tools (get_page_structure, quick_action, execute_js, wait_for_condition)
+  - Session management with headless/headed mode support
+  - Screenshot capture and page analysis
+- **API Key**: Requires Nova Act API key configuration via AWS Parameter Store or .env.local
 
 ### Python Runtime Server
 - **Purpose**: Safe Python code execution in sandboxed environment
@@ -343,7 +348,7 @@ cd ../fargate-mcp-farm/shared-infrastructure
 
 # 4. Deploy stateful MCP servers (uses VPC + shared ALB)
 cd ../
-./deploy-all.sh
+./deploy-all.sh -s nova-act-mcp
 ```
 
 See `DEPLOYMENT.md` for detailed AWS deployment instructions using CDK.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Playwright MCP Server Fargate Deployment Script
-# This script builds and deploys the Playwright MCP server to AWS Fargate
+# Nova Act MCP Server Fargate Deployment Script
+# This script builds and deploys the Nova Act MCP server to AWS Fargate
 
 set -e
 
@@ -31,14 +31,14 @@ print_error() {
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLAYWRIGHT_MCP_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)/playwright-mcp"
+NOVA_ACT_SOURCE_DIR="$SCRIPT_DIR/src"
 REGION="${AWS_REGION:-us-west-2}"
 STAGE="${STAGE:-prod}"
-STACK_NAME="playwright-mcp-fargate-${STAGE}"
+STACK_NAME="nova-act-mcp-fargate-${STAGE}"
 
-print_status "Starting Playwright MCP Fargate deployment..."
+print_status "Starting Nova Act MCP Fargate deployment..."
 print_status "Script directory: $SCRIPT_DIR"
-print_status "Playwright MCP source: $PLAYWRIGHT_MCP_DIR"
+print_status "Nova Act source: $NOVA_ACT_SOURCE_DIR"
 print_status "Region: $REGION"
 print_status "Stage: $STAGE"
 print_status "Stack name: $STACK_NAME"
@@ -77,10 +77,17 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check if playwright-mcp source directory exists
-    if [ ! -d "$PLAYWRIGHT_MCP_DIR" ]; then
-        print_error "Playwright MCP source directory not found: $PLAYWRIGHT_MCP_DIR"
-        print_error "Please ensure the playwright-mcp directory exists in the project root."
+    # Check if Nova Act MCP source directory exists
+    if [ ! -d "$NOVA_ACT_SOURCE_DIR" ]; then
+        print_error "Nova Act MCP source directory not found: $NOVA_ACT_SOURCE_DIR"
+        print_error "Please ensure the Nova Act MCP directory exists in the monorepo."
+        exit 1
+    fi
+    
+    # Check if key Nova Act files exist
+    if [ ! -f "$NOVA_ACT_SOURCE_DIR/nova_act_server.py" ]; then
+        print_error "Nova Act MCP server file not found: $NOVA_ACT_SOURCE_DIR/nova_act_server.py"
+        print_error "Please ensure the Nova Act MCP files exist in src directory."
         exit 1
     fi
     
@@ -154,27 +161,24 @@ build_and_push_image() {
     # Build Docker image
     print_status "Building Docker image..."
     
-    # Create temporary build directory
-    BUILD_DIR=$(mktemp -d)
-    cd "$BUILD_DIR"
+    # Prepare Nova Act build context
+    print_status "Preparing Nova Act build context..."
+    "$SCRIPT_DIR/prepare-build-context.sh"
     
-    # Copy our custom Dockerfile and config
-    cp "$SCRIPT_DIR/docker/Dockerfile" .
-    cp "$SCRIPT_DIR/docker/config.json" .
+    # Build from the prepared build context
+    cd "$SCRIPT_DIR/build-context"
     
-    # Build image with build args for customization
+    # Build Nova Act MCP image
     docker build \
-        --build-arg REPO_URL=https://github.com/microsoft/playwright-mcp.git \
-        --build-arg REPO_TAG=v0.0.33 \
-        -t playwright-mcp-fargate .
+        -t nova-act-mcp-fargate .
     
     # Tag and push image
-    docker tag playwright-mcp-fargate:latest "$ECR_URI:latest"
+    docker tag nova-act-mcp-fargate:latest "$ECR_URI:latest"
     docker push "$ECR_URI:latest"
     
-    # Clean up temporary build directory
+    # Clean up build context directory
     cd "$SCRIPT_DIR"
-    rm -rf "$BUILD_DIR"
+    rm -rf "$SCRIPT_DIR/build-context"
     
     print_success "Docker image built and pushed successfully"
 }
@@ -336,7 +340,7 @@ main() {
                 ;;
             --stage)
                 STAGE="$2"
-                STACK_NAME="playwright-mcp-fargate-${STAGE}"
+                STACK_NAME="nova-act-mcp-fargate-${STAGE}"
                 shift 2
                 ;;
             -h|--help)

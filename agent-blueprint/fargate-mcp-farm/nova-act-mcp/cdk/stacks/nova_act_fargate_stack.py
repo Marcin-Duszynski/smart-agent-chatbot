@@ -1,6 +1,6 @@
 """
-Playwright MCP Server Fargate Stack
-AWS CDK Stack for deploying Playwright MCP Server on ECS Fargate
+Nova Act MCP Server Fargate Stack
+AWS CDK Stack for deploying Nova Act MCP Server on ECS Fargate
 """
 
 from aws_cdk import (
@@ -19,11 +19,13 @@ from aws_cdk import (
     CfnOutput
 )
 from constructs import Construct
+import os
+from pathlib import Path
 
 
-class PlaywrightFargateStack(Stack):
+class NovaActFargateStack(Stack):
     """
-    CDK Stack for Playwright MCP Server on Fargate
+    CDK Stack for Nova Act MCP Server on Fargate
     """
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -50,8 +52,8 @@ class PlaywrightFargateStack(Stack):
 
         # Create ECR repository for the Docker image
         ecr_repository = ecr.Repository(
-            self, "PlaywrightMcpRepository",
-            repository_name=f"{stack_name}-playwright-mcp",
+            self, "NovaActMcpRepository",
+            repository_name=f"{stack_name}-nova-act-mcp",
             removal_policy=RemovalPolicy.DESTROY,  # For demo purposes
             image_scan_on_push=True,
             lifecycle_rules=[
@@ -64,7 +66,7 @@ class PlaywrightFargateStack(Stack):
 
         # Create ECS cluster
         cluster = ecs.Cluster(
-            self, "PlaywrightMcpCluster",
+            self, "NovaActMcpCluster",
             cluster_name=f"{stack_name}-cluster",
             vpc=vpc
             # container_insights=True  # Commented out to avoid deprecation warning
@@ -72,15 +74,15 @@ class PlaywrightFargateStack(Stack):
 
         # Create CloudWatch log group
         log_group = logs.LogGroup(
-            self, "PlaywrightMcpLogGroup",
-            log_group_name=f"/ecs/{stack_name}-playwright-mcp",
+            self, "NovaActMcpLogGroup",
+            log_group_name=f"/ecs/{stack_name}-nova-act-mcp",
             retention=logs.RetentionDays.ONE_WEEK,
             removal_policy=RemovalPolicy.DESTROY
         )
 
         # Create task execution role
         execution_role = iam.Role(
-            self, "PlaywrightMcpExecutionRole",
+            self, "NovaActMcpExecutionRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AmazonECSTaskExecutionRolePolicy")
@@ -104,10 +106,10 @@ class PlaywrightFargateStack(Stack):
         
         
         task_role = iam.Role(
-            self, "PlaywrightMcpTaskRole",
+            self, "NovaActMcpTaskRole",
             assumed_by=iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
             inline_policies={
-                "PlaywrightMcpPolicy": iam.PolicyDocument(
+                "NovaActMcpPolicy": iam.PolicyDocument(
                     statements=task_role_statements
                 )
             }
@@ -115,8 +117,8 @@ class PlaywrightFargateStack(Stack):
 
         # Create Fargate task definition
         task_definition = ecs.FargateTaskDefinition(
-            self, "PlaywrightMcpTaskDefinition",
-            family=f"{stack_name}-playwright-mcp",
+            self, "NovaActMcpTaskDefinition",
+            family=f"{stack_name}-nova-act-mcp",
             cpu=1024,  # 1 vCPU
             memory_limit_mib=2048,  # 2 GB RAM
             execution_role=execution_role,
@@ -127,20 +129,37 @@ class PlaywrightFargateStack(Stack):
             )
         )
 
+        # Load API key from .env.local file (or fallback to default)
+        env_vars = self._load_env_files()
+        default_api_key = env_vars.get('NOVA_ACT_API_KEY', 'your_nova_act_api_key_here')
+
+        # Create parameter for Nova Act API Key (uses .env value as default)
+        api_key_parameter = ssm.StringParameter(
+            self, "NovaActApiKeyParameter", 
+            parameter_name="/nova-act-mcp/api-key",
+            string_value=default_api_key,  # From .env file
+            description="Nova Act API Key for MCP server (override via AWS Console if needed)",
+            tier=ssm.ParameterTier.STANDARD
+        )
+
         # Add container to task definition
-        task_definition.add_container(
-            "PlaywrightMcpContainer",
+        container = task_definition.add_container(
+            "NovaActMcpContainer",
             image=ecs.ContainerImage.from_asset(
-                directory="../docker"
+                directory="../src",
+                file="Dockerfile"
             ),
             logging=ecs.LogDrivers.aws_logs(
-                stream_prefix="playwright-mcp",
+                stream_prefix="nova-act-mcp",
                 log_group=log_group
             ),
             environment=self._build_environment_variables(),
+            secrets={
+                "NOVA_ACT_API_KEY": ecs.Secret.from_ssm_parameter(api_key_parameter)
+            },
             port_mappings=[
                 ecs.PortMapping(
-                    container_port=8931,
+                    container_port=8000,  # Updated to correct port
                     protocol=ecs.Protocol.TCP
                 )
             ]
@@ -148,18 +167,18 @@ class PlaywrightFargateStack(Stack):
 
         # Create security group for the service
         service_security_group = ec2.SecurityGroup(
-            self, "PlaywrightMcpServiceSecurityGroup",
+            self, "NovaActMcpServiceSecurityGroup",
             vpc=vpc,
-            description="Security group for Playwright MCP Fargate service",
+            description="Security group for Nova Act MCP Fargate service",
             allow_all_outbound=True
         )
 
-        # Allow inbound traffic on port 8931 from ALB security group
+        # Allow inbound traffic on port 8000 from ALB security group
         # Import VPC CIDR for security group rules
         vpc_cidr = Fn.import_value(f"ChatbotStack-vpc-cidr")
         service_security_group.add_ingress_rule(
             peer=ec2.Peer.ipv4(vpc_cidr),
-            connection=ec2.Port.tcp(8931),
+            connection=ec2.Port.tcp(8000),
             description="Allow inbound traffic from ALB"
         )
 
@@ -181,10 +200,10 @@ class PlaywrightFargateStack(Stack):
 
         # Create Fargate service without ALB (we'll add target group manually)
         fargate_service = ecs.FargateService(
-            self, "PlaywrightMcpService",
+            self, "NovaActMcpService",
             cluster=cluster,
             task_definition=task_definition,
-            service_name=f"{stack_name}-playwright-mcp-service",
+            service_name=f"{stack_name}-nova-act-mcp-service",
             desired_count=1,
             platform_version=ecs.FargatePlatformVersion.LATEST,
             assign_public_ip=False,  # Running in private subnet
@@ -196,32 +215,32 @@ class PlaywrightFargateStack(Stack):
 
         # Create target group for the Fargate service
         target_group = elbv2.ApplicationTargetGroup(
-            self, "PlaywrightMcpTargetGroup",
+            self, "NovaActMcpTargetGroup",
             vpc=vpc,
-            port=8931,
+            port=8000,
             protocol=elbv2.ApplicationProtocol.HTTP,
             target_type=elbv2.TargetType.IP,
             deregistration_delay=Duration.seconds(30),
             health_check=elbv2.HealthCheck(
                 protocol=elbv2.Protocol.HTTP,
-                path="/mcp",
-                port="8931",
+                path="/nova-act/mcp",  # Same as MCP endpoint
+                port="8000",
                 healthy_threshold_count=2,
                 unhealthy_threshold_count=3,
-                timeout=Duration.seconds(5),
+                timeout=Duration.seconds(10),  # Increased timeout for Python execution
                 interval=Duration.seconds(30),
-                healthy_http_codes="200,400"  # Accept 400 as healthy since MCP server responds with 400 to GET
+                healthy_http_codes="200,400,406"  # Accept 400,406 as healthy since FastMCP server responds with 406 to GET
             )
         )
 
 
-        # Add listener rule for /playwright/* path
+        # Add listener rule for /nova-act/mcp path  
         elbv2.ApplicationListenerRule(
-            self, "PlaywrightMcpListenerRule",
+            self, "NovaActMcpListenerRule",
             listener=shared_listener,
             priority=100,
             conditions=[
-                elbv2.ListenerCondition.path_patterns(["/playwright/*"])
+                elbv2.ListenerCondition.path_patterns(["/nova-act/mcp"])
             ],
             action=elbv2.ListenerAction.forward([target_group])
         )
@@ -275,8 +294,8 @@ class PlaywrightFargateStack(Stack):
 
         CfnOutput(
             self, "McpEndpoint",
-            value=f"http://{shared_alb.load_balancer_dns_name}/playwright/mcp",
-            description="Playwright MCP Server Endpoint URL"
+            value=f"http://{shared_alb.load_balancer_dns_name}/nova-act/mcp",
+            description="Nova Act MCP Server Endpoint URL"
         )
 
         CfnOutput(
@@ -306,9 +325,9 @@ class PlaywrightFargateStack(Stack):
         # Parameter Store entry for MCP endpoint
         ssm.StringParameter(
             self, "McpEndpointParameter",
-            parameter_name="/mcp/endpoints/stateful/playwright-mcp",
-            string_value=f"http://{shared_alb.load_balancer_dns_name}/playwright/mcp",
-            description="Playwright MCP Server endpoint URL"
+            parameter_name="/mcp/endpoints/stateful/nova-act-mcp",
+            string_value=f"http://{shared_alb.load_balancer_dns_name}/nova-act/mcp",
+            description="Nova Act MCP Server endpoint URL"
         )
         
 
@@ -320,16 +339,52 @@ class PlaywrightFargateStack(Stack):
         self.target_group = target_group
         self.log_group = log_group
     
+    def _load_env_files(self) -> dict:
+        """Load environment variables from .env and .env.local files"""
+        src_dir = Path(__file__).parent.parent.parent / "src"
+        env_vars = {}
+        
+        # Load public settings from .env first
+        env_file = src_dir / ".env"
+        if env_file.exists():
+            with open(env_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        env_vars[key.strip()] = value.strip()
+        
+        # Load sensitive values from .env.local (overrides .env)
+        env_local_file = src_dir / ".env.local"
+        if env_local_file.exists():
+            with open(env_local_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        env_vars[key.strip()] = value.strip()
+        
+        return env_vars
+    
     def _build_environment_variables(self) -> dict:
-        """Build environment variables for the container"""
-        env_vars = {
-            "NODE_ENV": "production",
-            "PORT": "8931",
-            "LOG_LEVEL": "info",
-            # Deployment mode for environment detection
+        """Build environment variables for the container - loads from .env and .env.local files"""
+        # Start with .env and .env.local file values
+        env_vars = self._load_env_files()
+        
+        # Remove sensitive values that should only be in secrets (not environment variables)
+        sensitive_keys = ['NOVA_ACT_API_KEY']
+        for key in sensitive_keys:
+            env_vars.pop(key, None)
+        
+        # Add container-specific settings (override .env if needed)
+        container_specific = {
+            "PYTHONUNBUFFERED": "1",
+            "DISPLAY": ":99", 
             "DEPLOYMENT_MODE": "cloud",
-            # AWS region
             "AWS_DEFAULT_REGION": self.region
         }
+        
+        # Merge with .env values taking precedence for app settings
+        env_vars.update(container_specific)
         
         return env_vars

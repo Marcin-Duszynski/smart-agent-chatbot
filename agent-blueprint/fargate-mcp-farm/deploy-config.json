@@ -3,15 +3,15 @@
     "region": "us-west-2",
     "stage": "prod",
     "servers": {
-      "playwright-mcp": {
+      "nova-act-mcp": {
         "enabled": true,
-        "stack_name": "playwright-mcp-fargate",
-        "description": "Playwright MCP Server on AWS Fargate",
+        "stack_name": "nova-act-mcp-fargate",
+        "description": "Nova Act MCP Server on AWS Fargate with Browser Automation",
         "type": "fargate",
         "config": {
-          "cpu": 1024,
-          "memory": 2048,
-          "port": 8931,
+          "cpu": 2048,
+          "memory": 4096,
+          "port": 8000,
           "desired_count": 1,
           "max_capacity": 5,
           "min_capacity": 1
@@ -34,9 +34,11 @@
     }
   },
   "environment_variables": {
-    "playwright-mcp": {
-      "NODE_ENV": "production",
-      "PORT": "8931",
+    "nova-act-mcp": {
+      "PYTHONUNBUFFERED": "1",
+      "DISPLAY": ":99",
+      "NODE_ENV": "development",
+      "PORT": "8000",
       "LOG_LEVEL": "info"
     },
     "python-mcp": {

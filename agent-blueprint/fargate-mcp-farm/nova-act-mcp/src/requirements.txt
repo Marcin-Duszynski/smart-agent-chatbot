@@ -1,0 +1,8 @@
+fastmcp>=2.11.0
+nova-act
+python-dotenv
+psutil
+fastapi
+uvicorn[standard]
+httpx
+playwright

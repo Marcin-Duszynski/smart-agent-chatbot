@@ -1,0 +1,45 @@
+{
+  "browser": {
+    "headless": true,
+    "chrome_channel": "chrome",
+    "timeout": 300,
+    "max_steps": 30,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "chrome_args": [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-extensions",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+      "--disable-web-security",
+      "--disable-features=VizDisplayCompositor",
+      "--disable-setuid-sandbox"
+    ]
+  },
+  "server": {
+    "port": 8000,
+    "host": "0.0.0.0",
+    "transport": "streamable-http"
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "[MCP] %(levelname)s - %(name)s - %(message)s"
+  },
+  "session": {
+    "ttl_seconds": 600,
+    "cleanup_interval": 60,
+    "default_headless": true
+  },
+  "capabilities": [
+    "browser_automation",
+    "screenshot",
+    "javascript_execution",
+    "page_structure_analysis",
+    "natural_language_actions"
+  ]
+}

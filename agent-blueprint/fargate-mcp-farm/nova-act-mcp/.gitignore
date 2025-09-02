@@ -1,0 +1,21 @@
+# Sensitive configuration files
+src/.env.local
+
+# CDK generated files
+cdk/cdk.out/
+cdk/venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -58,12 +58,15 @@ out/
 # Production
 /build
 
-# Misc
+# Misc - Environment files (but allow public config files)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Allow public configuration files (non-sensitive settings)
+!*/nova-act-mcp/src/.env
 
 # Logs
 logs

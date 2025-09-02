@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Playwright MCP Server Fargate Destruction Script
-# This script destroys the Playwright MCP server Fargate deployment
+# Nova Act MCP Server Fargate Destruction Script
+# This script destroys the Nova Act MCP server Fargate deployment
 
 set -e
 
@@ -33,9 +33,9 @@ print_error() {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REGION="${AWS_REGION:-us-west-2}"
 STAGE="${STAGE:-prod}"
-STACK_NAME="playwright-mcp-fargate"
+STACK_NAME="nova-act-mcp-fargate"
 
-print_status "Starting Playwright MCP Fargate destruction..."
+print_status "Starting Nova Act MCP Fargate destruction..."
 print_status "Region: $REGION"
 print_status "Stage: $STAGE"
 print_status "Stack name: $STACK_NAME"
@@ -193,7 +193,7 @@ main() {
                 ;;
             --stage)
                 STAGE="$2"
-                STACK_NAME="playwright-mcp-fargate"
+                STACK_NAME="nova-act-mcp-fargate"
                 shift 2
                 ;;
             -y|--yes)
@@ -230,7 +230,7 @@ main() {
     cleanup_local
     
     echo ""
-    print_success "Playwright MCP Fargate deployment destroyed successfully!"
+    print_success "Nova Act MCP Fargate deployment destroyed successfully!"
     print_status "All AWS resources have been removed."
     echo ""
 }
