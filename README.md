@@ -86,16 +86,21 @@ Modular Context Protocol servers providing external integrations:
 
 #### Serverless MCP Servers (Lambda)
 - **AWS Documentation**: Search AWS documentation using official Search API
+  
+<img src="docs/images/awsdoc.gif" alt="awsdoc" width="800">
+
 - **AWS Pricing**: Access real-time AWS pricing information and analyze cost
 - **Bedrock Knowledge Base Retrieval**: Query Amazon Bedrock Knowledge Bases using natural language
 - **Tavily Web Search**: Perform web search using Tavily AI
+- **Financial Analysis**: Aalyze stock prices and market trends using Yahoo Finance API
 
-![Home](docs/images/mcp.gif)
+<img src="docs/images/finance.gif" alt="Fiannce" width="800">
+
 
 #### Stateful MCP Servers (ECS)
 - **Nova Act Browser**: Advanced browser automation combining natural language instructions with direct Playwright API access. Supports high-level actions like "click the blue submit button" alongside precise element targeting with CSS selectors
 
-![Home](docs/images/browser-mcp.gif)
+<img src="docs/images/browser.gif" alt="Browser" width="800">
 
 - **Python Runtime**: Execute Python code safely in a sandboxed environment using Pyodide
 
@@ -104,7 +109,7 @@ Specialized AI agents for complex workflows:
 - **Spending Analysis Tool**: Personal spending pattern analysis with demographic comparisons and behavioral insights
 - **Financial Narrative Tool**: Creative storytelling tool that transforms spending data into narratives with AI-generated images
 
-![Home](docs/images/sub-agent.gif)
+<img src="docs/images/subagent.gif" alt="SubAgent" width="800">
 
 ### Adding MCP Servers
 
