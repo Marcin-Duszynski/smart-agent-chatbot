@@ -194,6 +194,19 @@
       "icon": "browser",
       "enabled": false,
       "tool_type": "mcp"
+    },
+    {
+      "id": "financial-market",
+      "name": "Financial Market Data",
+      "description": "Comprehensive financial market data, analysis, and news tools with real-time stock quotes, market indices, and investment analysis",
+      "type": "mcp",
+      "config": {
+        "url": "ssm:///mcp/endpoints/serverless/financial-market"
+      },
+      "category": "finance",
+      "icon": "trending-up",
+      "enabled": false,
+      "tool_type": "mcp"
     }
   ]
 }

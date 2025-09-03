@@ -12,6 +12,7 @@ This deployment system allows you to deploy and manage multiple MCP servers with
 - **aws-pricing**: Get AWS service pricing information
 - **bedrock-kb-retrieval**: Query Amazon Bedrock Knowledge Bases
 - **tavily-web-search**: Perform web searches using Tavily API
+- **financial-market**: Get stock quotes, market data, and financial analysis
 
 ## Prerequisites
 
@@ -61,6 +62,7 @@ Required AWS permissions:
 3. **Deploy specific server**:
    ```bash
    ./deploy-server.sh -s aws-documentation
+   ./deploy-server.sh -s financial-market
    ```
 
 ## Configuration
@@ -211,6 +213,18 @@ Requires Tavily API key:
 ```
 
 Get your API key from [Tavily](https://tavily.com/).
+
+### Financial Market Server
+
+No additional configuration required. Provides real-time stock quotes and market analysis using Yahoo Finance data.
+
+Available tools:
+- `stock_quote`: Get current stock information
+- `historical_data`: Get historical price data
+- `market_indices`: Get major market index data
+- `financial_news`: Get latest financial news
+- `fundamental_analysis`: Get company fundamentals
+- `market_data`: Get comprehensive market overview
 
 ### Manual Testing
 

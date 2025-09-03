@@ -62,18 +62,6 @@ vim config.json
 # Change "defaultRegion" to your preferred region
 ```
 
-**Example for Korea region:**
-```json
-{
-  "defaultRegion": "ap-northeast-2",
-  "supportedRegions": [
-    "us-west-2",
-    "us-east-1", 
-    "ap-northeast-2",
-    "eu-west-1"
-  ]
-}
-```
 
 #### Deploy Web Application
 

@@ -318,40 +318,35 @@ async def create_visualization(chart_data: dict, chart_name: str) -> str:
             except Exception as e:
                 logger.debug(f"Progress completion failed (non-critical): {e}")
         
-        # Return success response with chart data for direct rendering in Strands ToolResult format
-        result_text = f"Chart '{chart_data['config']['title']}' created successfully"
+        # Return JSON directly for frontend consumption (simplified approach)
         result_data = {
             "success": True,
             "chart_id": chart_id,
             "chart_type": chart_data["chartType"],
             "title": chart_data["config"]["title"],
-            "message": f"Chart created successfully",
+            "message": f"Chart '{chart_data['config']['title']}' created successfully",
             "chart_data": chart_data
         }
         
         logger.info(f"Chart created successfully: {chart_id}")
-        return {
-            "status": "success",
-            "content": [
-                {"text": result_text},
-                {"json": result_data}
-            ]
-        }
+        return json.dumps(result_data, indent=2)
         
     except ValueError as e:
         error_msg = str(e)
         logger.error(f"Chart validation error: {error_msg}")
         
-        return {
-            "status": "error",
-            "content": [{"text": f"❌ Chart creation failed: {error_msg}"}]
+        error_result = {
+            "success": False,
+            "message": f"❌ Chart creation failed: {error_msg}"
         }
+        return json.dumps(error_result, indent=2)
         
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
         logger.error(f"Chart creation error: {error_msg}")
         
-        return {
-            "status": "error",
-            "content": [{"text": f"❌ An error occurred while creating the chart: {str(e)}"}]
+        error_result = {
+            "success": False,
+            "message": f"❌ An error occurred while creating the chart: {str(e)}"
         }
+        return json.dumps(error_result, indent=2)

@@ -127,6 +127,8 @@ dist
 # Temporary folders
 tmp/
 temp/
+test-temp/
+**/test-temp/
 
 # Application specific
 uploads/

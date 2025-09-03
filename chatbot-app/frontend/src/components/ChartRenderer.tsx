@@ -186,16 +186,23 @@ function LineChartComponent({ data }: { data: ChartData }) {
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            {Object.keys(data.chartConfig).map((key, index) => (
-              <Line
-                key={key}
-                type="natural"
-                dataKey={key}
-                stroke={`var(--color-${key}, hsl(var(--chart-${index + 1})))`}
-                strokeWidth={2}
-                dot={false}
-              />
-            ))}
+            {Object.keys(data.chartConfig).map((key, index) => {
+              const configColor = data.chartConfig[key]?.color;
+              const fallbackColor = `hsl(var(--chart-${index + 1}))`;
+              const finalColor = configColor || fallbackColor;
+              
+              return (
+                <Line
+                  key={key}
+                  type="natural"
+                  dataKey={key}
+                  stroke={finalColor}
+                  strokeWidth={3}
+                  strokeOpacity={1}
+                  dot={false}
+                />
+              );
+            })}
           </LineChart>
         </ChartContainer>
       </CardContent>

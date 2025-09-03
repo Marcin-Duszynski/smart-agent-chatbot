@@ -1,0 +1,7 @@
+awslabs-mcp-lambda-handler
+curl_cffi==0.12.0
+yfinance>=0.2.58
+pandas>=2.0.0
+requests>=2.25.0
+loguru>=0.7.0
+pydantic

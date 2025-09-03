@@ -169,6 +169,21 @@ build_lambda_package() {
     
     print_status "Building Lambda deployment package for $server_name..."
     
+    # Special handling for financial-market server (uses custom Layer)
+    if [ "$server_name" = "financial-market" ]; then
+        print_status "Using custom deployment script for financial-market server..."
+        cd "$server_dir/infrastructure"
+        if [ -f "./deploy.sh" ]; then
+            # Pass region and stage to custom deploy script
+            AWS_DEFAULT_REGION="$region" DEPLOYMENT_STAGE="$stage" ./deploy.sh
+            return $?
+        else
+            print_error "Custom deploy.sh not found for financial-market"
+            return 1
+        fi
+    fi
+    
+    # Standard deployment for other servers
     # Setup virtual environment
     setup_python_environment "$server_dir"
     
@@ -459,8 +474,9 @@ show_usage() {
     echo "  -h, --help           Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0                           # Deploy all enabled servers"
+    echo "  $0                           # Deploy all enabled servers" 
     echo "  $0 -s aws-documentation      # Deploy only aws-documentation server"
+    echo "  $0 -s financial-market       # Deploy only financial-market server"
     echo "  $0 -c custom-config.json     # Use custom configuration file"
     echo "  $0 -t                        # Run tests only"
 }

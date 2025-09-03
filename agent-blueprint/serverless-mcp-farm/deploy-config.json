@@ -22,6 +22,11 @@
         "enabled": true,
         "stack_name": "mcp-tavily-web-search-server",
         "description": "Tavily Web Search MCP Server"
+      },
+      "financial-market": {
+        "enabled": true,
+        "stack_name": "mcp-financial-analysis-server",
+        "description": "Financial Market Data and Analysis MCP Server"
       }
     }
   },
@@ -42,6 +47,9 @@
     "tavily-web-search": {
       "LOG_LEVEL": "INFO",
       "TAVILY_API_KEY": "{TAVILY_API_KEY}"
+    },
+    "financial-market": {
+      "LOG_LEVEL": "INFO"
     }
   },
   "testing": {
@@ -80,6 +88,20 @@
             "query": "AWS Lambda best practices",
             "max_results": 3
           }
+        }
+      ],
+      "financial-market": [
+        {
+          "name": "Get stock quote",
+          "method": "stock_quote", 
+          "arguments": {
+            "symbol": "AAPL"
+          }
+        },
+        {
+          "name": "Get market data",
+          "method": "market_data",
+          "arguments": {}
         }
       ]
     }
