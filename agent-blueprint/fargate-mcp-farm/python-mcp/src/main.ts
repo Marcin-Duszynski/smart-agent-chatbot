@@ -29,6 +29,63 @@ function escapeClosing(closingTag: string): (str: string) => string {
 }
 
 /*
+ * Clean XML response for model (without Base64 data)
+ */
+function asXmlWithFilesForModel(
+  runResult: any, 
+  files: FileInfo[], 
+  zipFile: FileInfo | null, 
+  sessionId: string
+): string {
+  // Start with base XML structure
+  const xml = [`<status>${runResult.status}</status>`]
+  
+  if (runResult.dependencies?.length) {
+    xml.push(`<dependencies>${JSON.stringify(runResult.dependencies)}</dependencies>`)
+  }
+  
+  if (runResult.output.length) {
+    xml.push('<output>')
+    const escapeXml = escapeClosing('output')
+    xml.push(...runResult.output.map(escapeXml))
+    xml.push('</output>')
+  }
+  
+  if (runResult.status == 'success') {
+    if (runResult.returnValueJson) {
+      xml.push('<return_value>')
+      xml.push(escapeClosing('return_value')(runResult.returnValueJson))
+      xml.push('</return_value>')
+    }
+  } else {
+    xml.push('<error>')
+    xml.push(escapeClosing('error')(runResult.error || 'Unknown error'))
+    xml.push('</error>')
+  }
+  
+  // Add files section WITHOUT Base64 data (for model)
+  if (zipFile && zipFile.base64Data) {
+    xml.push('<files>')
+    xml.push(`<archive name="${escapeClosing('archive')(zipFile.name)}" size="${zipFile.sizeHuman}">`)
+    xml.push(`<contains>${zipFile.containedFiles?.map(f => `${escapeClosing('contains')(f.name)} (${f.size})`).join(', ')}</contains>`)
+    xml.push(`<download>Files generated and saved for download</download>`)
+    xml.push('</archive>')
+    xml.push('</files>')
+  } else if (files.length > 0) {
+    xml.push('<files>')
+    for (const file of files) {
+      xml.push(`<file name="${escapeClosing('file')(file.name)}" size="${file.sizeHuman}" type="${file.type}">`)
+      xml.push(`<description>${escapeClosing('description')(file.description)}</description>`)
+      xml.push(`<resource>mcp-python://session/${sessionId}/file/${file.name}</resource>`)
+      xml.push('</file>')
+    }
+    xml.push('</files>')
+  }
+  
+  return `<result>\n${xml.map(line => `  ${line}`).join('\n')}\n</result>`
+}
+
+/*
  * Enhanced asXml function that includes file information
  */
 function asXmlWithFiles(
@@ -379,14 +436,14 @@ print('python code here')
           zipFile = await fileManager.createBase64ZipFile(files, sessionId, executionNumber)
         }
         
-        // Generate response using asXml but with file information added
-        let responseText = asXmlWithFiles(result, files, zipFile, sessionId)
+        // Generate two versions: one for model (clean) and one for UI (with file info)
+        let cleanResponseText = asXmlWithFilesForModel(result, files, zipFile, sessionId)
         
         // Cleanup old executions to prevent disk bloat  
         await fileManager.cleanupSession(sessionId, 5)
         
         return {
-          content: [{ type: 'text', text: responseText }],
+          content: [{ type: 'text', text: cleanResponseText }],
         }
         
       } catch (fileError) {

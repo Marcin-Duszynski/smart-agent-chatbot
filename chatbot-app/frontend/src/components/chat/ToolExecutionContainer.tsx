@@ -166,6 +166,10 @@ export const ToolExecutionContainer: React.FC<ToolExecutionContainerProps> = ({ 
           
         } catch (error) {
           console.error('Python MCP download failed:', error);
+          // Check if it's a 404 error (session expired)
+          if (error instanceof Error && error.message.includes('404')) {
+            throw new Error('Download session expired. Please run the code again to generate new files.');
+          }
           throw error;
         }
       }

@@ -45,6 +45,22 @@ class UnifiedToolManager:
             logger.error(f"Error loading config: {e}")
             self.config = {"tools": []}
     
+    def _process_base64_for_model(self, text_content: str) -> str:
+        """Remove Base64 download data from tool result before sending to model"""
+        import re
+        
+        # Pattern to match Base64 data URLs: <download>data:application/zip;base64,{base64_data}</download>
+        base64_pattern = r'<download>data:([^;]+);base64,([A-Za-z0-9+/=]+)</download>'
+        
+        # Replace Base64 data with a simple message for the model
+        processed_text = re.sub(base64_pattern, r'[Files generated and saved for download]', text_content)
+        
+        # If replacement occurred, log it
+        if processed_text != text_content:
+            print(f"📝 Removed Base64 data from model tool result (saved {len(text_content) - len(processed_text)} characters)")
+        
+        return processed_text
+
     def _parse_mcp_response(self, response):
         """Parse MCP response - handles both JSON and SSE formats"""
         try:
@@ -436,8 +452,9 @@ class UnifiedToolManager:
                                                 result_text += json.dumps(cleaned_response, indent=2)
                                                 
                                             except (json.JSONDecodeError, TypeError):
-                                                # Not JSON, use as-is
-                                                result_text += text_content
+                                                # Not JSON, process Base64 downloads if needed
+                                                processed_text = self._process_base64_for_model(text_content)
+                                                result_text += processed_text
                                         
                                         elif "data" in content_item and "mimeType" in content_item:
                                             # Handle ImageContent from FastMCP Image objects

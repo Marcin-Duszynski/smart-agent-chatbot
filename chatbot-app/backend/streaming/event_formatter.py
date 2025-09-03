@@ -85,7 +85,7 @@ class StreamEventFormatter:
     @staticmethod
     def create_tool_result_event(tool_result: Dict[str, Any]) -> str:
         """Create tool result event - refactored for clarity"""
-        # 1. Extract all content (text and images)
+        # 1. Extract all content (text and images) and process Base64
         result_text, result_images = StreamEventFormatter._extract_all_content(tool_result)
         
         # 2. Handle storage based on tool type
@@ -96,7 +96,7 @@ class StreamEventFormatter:
     
     @staticmethod
     def _extract_all_content(tool_result: Dict[str, Any]) -> Tuple[str, List[Dict[str, str]]]:
-        """Extract text content and images from tool result"""
+        """Extract text content and images from tool result and process Base64"""
         # Extract basic content from MCP format
         result_text, result_images = StreamEventFormatter._extract_basic_content(tool_result)
         
@@ -104,7 +104,10 @@ class StreamEventFormatter:
         json_images, cleaned_text = StreamEventFormatter._process_json_content(result_text)
         result_images.extend(json_images)
         
-        return cleaned_text, result_images
+        # Process Base64 downloads for Python MCP tools
+        final_text = StreamEventFormatter._process_base64_downloads(tool_result, cleaned_text)
+        
+        return final_text, result_images
     
     @staticmethod
     def _extract_basic_content(tool_result: Dict[str, Any]) -> Tuple[str, List[Dict[str, str]]]:
@@ -157,6 +160,34 @@ class StreamEventFormatter:
             return [], result_text
     
     @staticmethod
+    def _process_base64_downloads(tool_result: Dict[str, Any], result_text: str) -> str:
+        """Process Base64 downloads for Python MCP tools"""
+        tool_use_id = tool_result.get("toolUseId")
+        if not tool_use_id:
+            return result_text
+            
+        # Get tool info to check if this is a Python MCP tool
+        tool_info = StreamEventFormatter._get_tool_info(tool_use_id)
+        if not tool_info:
+            return result_text
+            
+        tool_name = tool_info.get('tool_name')
+        session_id = tool_info.get('session_id')
+        
+        # Only process for Python MCP tools
+        if tool_name == 'run_python_code' and session_id:
+            try:
+                processed_text, file_info = StreamEventFormatter._handle_python_mcp_base64(
+                    tool_use_id, result_text, session_id)
+                if file_info:
+                    print(f"📁 Intercepted and saved {len(file_info)} files for {tool_use_id}")
+                    return processed_text
+            except Exception as e:
+                print(f"⚠️ Error processing Base64 downloads: {e}")
+        
+        return result_text
+    
+    @staticmethod
     def _build_tool_result_event(tool_result: Dict[str, Any], result_text: str, result_images: List[Dict[str, str]]) -> str:
         """Build the final tool result event"""
         tool_result_data = {
@@ -169,6 +200,7 @@ class StreamEventFormatter:
         
         return StreamEventFormatter.format_sse_event(tool_result_data)
     
+
     @staticmethod
     def _handle_tool_storage(tool_result: Dict[str, Any], result_text: str):
         """Handle storage based on tool type using handler pattern"""
@@ -259,19 +291,8 @@ class StreamEventFormatter:
         
         def save(self, tool_use_id: str, result_text: str):
             print(f"🎯 DETECTED PYTHON MCP TOOL: {self.tool_name}")
-            
-            if self.session_id:
-                try:
-                    processed_text, file_info = StreamEventFormatter._handle_python_mcp_base64(
-                        tool_use_id, result_text, self.session_id)
-                    if file_info:
-                        print(f"📁 Processed and saved {len(file_info)} files for {tool_use_id}")
-                        result_text = processed_text
-                except Exception as e:
-                    print(f"⚠️ Error processing Base64 files: {e}")
-            else:
-                print(f"⚠️ No session_id found for Python MCP tool: {tool_use_id}")
-            
+            # Base64 processing is now handled in _process_base64_downloads
+            # Just save the result text (already processed)
             StreamEventFormatter._save_agent_tool_result(tool_use_id, result_text)
     
     class _DefaultToolHandler(_ToolHandler):
@@ -339,7 +360,7 @@ class StreamEventFormatter:
         
         try:
             # Pattern to match Base64 data URLs: data:application/zip;base64,{base64_data}
-            base64_pattern = r'<download[^>]*?>data:([^;]+);base64,([A-Za-z0-9+/=]+)</download>'
+            base64_pattern = r'<download>data:([^;]+);base64,([A-Za-z0-9+/=]+)</download>'
             
             # Check if pattern exists
             import re

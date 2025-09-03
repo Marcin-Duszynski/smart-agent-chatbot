@@ -75,7 +75,6 @@ OTEL_BSP_EXPORT_TIMEOUT=5000
 EOF
 
 echo "✅ Created $ENV_FILE with observability configuration"
-
 echo ""
 echo "🎯 Next Steps:"
 echo "1. Enable CloudWatch Transaction Search:"
