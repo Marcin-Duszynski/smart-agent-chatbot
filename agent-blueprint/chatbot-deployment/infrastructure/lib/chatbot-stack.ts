@@ -121,8 +121,12 @@ export class ChatbotStack extends cdk.Stack {
       })
     );
 
-    // Import existing AgentCore Observability Log Group
-    const agentObservabilityLogGroup = logs.LogGroup.fromLogGroupName(this, 'AgentObservabilityLogGroup', 'agents/strands-agent-logs');
+    // Create or reuse AgentCore Observability Log Group (idempotent)
+    const agentObservabilityLogGroup = new logs.LogGroup(this, 'AgentObservabilityLogGroup', {
+      logGroupName: 'agents/strands-agent-logs',
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.RETAIN
+    });
 
     // Generate unique log stream name
     const logStreamName = `otel-auto-${Math.random().toString(36).substring(2, 11)}`;
