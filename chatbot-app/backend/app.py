@@ -17,6 +17,7 @@ from services.storage import StorageManager
 from routers import chat, tools, conversation, files, mcp, model, customer, analysis, tool_events, chat_suggestions, charts, session, debug
 from utils.server import start_server_with_port_management
 from middleware.domain_validation import DomainValidationMiddleware
+from middleware.cookie_security import CookieSecurityMiddleware
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -93,6 +94,9 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Session-ID"],  # Expose session ID header to frontend
 )
+
+# Cookie security middleware for cross-site compatibility
+app.add_middleware(CookieSecurityMiddleware)
 
 # Domain validation middleware for embed endpoints
 app.add_middleware(DomainValidationMiddleware)
