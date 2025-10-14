@@ -112,7 +112,7 @@ if [ "$ENABLE_COGNITO" = "true" ]; then
     echo "💾 Saving Cognito configuration to .env files..."
     
     # Save to agent-blueprint/.env (main project .env)
-    MAIN_ENV_FILE="../../../.env"
+    MAIN_ENV_FILE="../../.env"
     if [ ! -f "$MAIN_ENV_FILE" ]; then
         touch "$MAIN_ENV_FILE"
     fi
@@ -134,7 +134,7 @@ if [ "$ENABLE_COGNITO" = "true" ]; then
     rm -f "$MAIN_ENV_FILE.tmp" "$MAIN_ENV_FILE.tmp2" "$MAIN_ENV_FILE.tmp3"
     
     # Save to chatbot-app backend .env
-    BACKEND_ENV_FILE="../../../chatbot-app/backend/.env"
+    BACKEND_ENV_FILE="../../../../chatbot-app/backend/.env"
     if [ ! -f "$BACKEND_ENV_FILE" ]; then
         touch "$BACKEND_ENV_FILE"
     fi
@@ -150,7 +150,7 @@ if [ "$ENABLE_COGNITO" = "true" ]; then
     rm -f "$BACKEND_ENV_FILE.tmp"
     
     # Save to chatbot-app frontend .env.local
-    FRONTEND_ENV_FILE="../../../chatbot-app/frontend/.env.local"
+    FRONTEND_ENV_FILE="../../../../chatbot-app/frontend/.env.local"
     if [ ! -f "$FRONTEND_ENV_FILE" ]; then
         touch "$FRONTEND_ENV_FILE"
     fi

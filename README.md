@@ -175,8 +175,9 @@ Configure AI models, temperature, and system prompts:
 
 2. **Configure environment**:
    ```bash
-   cp .env.example .env.development
-   # Edit .env.development with your AWS credentials
+   cd agent-blueprint
+   cp .env.example .env
+   # Edit .env with your AWS credentials and API keys
    ```
 
 3. **Start the application**:
@@ -306,9 +307,10 @@ Edit `chatbot-app/backend/unified_tools_config.json`:
 ```
 
 ### Environment Configuration
-- `.env.development`: Local development settings
-- `.env.production`: Cloud deployment settings
-- `.env.example`: Template with all available options
+- `agent-blueprint/.env`: Main configuration file for deployment and API keys
+- `agent-blueprint/.env.example`: Template with all available options
+- `chatbot-app/backend/.env`: Backend-specific settings (auto-generated)
+- `chatbot-app/frontend/.env.local`: Frontend-specific settings (auto-generated)
 
 ## Pre-built MCP Servers
 
