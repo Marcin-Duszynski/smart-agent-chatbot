@@ -204,6 +204,30 @@ cd ../../serverless-mcp-farm
 ./deploy-server.sh
 ```
 
+## IFrame Embedding Support
+
+The chatbot supports IFrame embedding for seamless integration into existing websites and applications. 
+
+**📋 Quick Start:**
+```html
+<iframe 
+  src="https://your-chatbot-domain.com/embed" 
+  width="100%" 
+  height="600"
+  frameborder="0"
+  title="AI Chatbot">
+</iframe>
+```
+
+**🚀 Interactive Demo:** Visit `/embed-example.html` when running the application to see live examples of responsive embedding and floating chat widgets.
+
+**📚 Complete Guide:** See [README_EMBED.md](README_EMBED.md) for comprehensive embedding instructions, including:
+- Framework integration
+- Floating chat widget implementation
+- Cross-origin communication setup
+- Security configuration and troubleshooting
+- Production deployment best practices
+
 ## Technology Stack
 
 ### Backend
