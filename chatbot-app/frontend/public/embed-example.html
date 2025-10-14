@@ -30,7 +30,8 @@
 
         <div class="warning-box">
             <strong>⚠️ Setup Required:</strong> Replace iframe src URLs with your actual chatbot domain and configure
-            your domain in the deployment settings for production use.
+            your domain in both the backend CORS_ORIGINS and frontend CORS_ORIGINS environment variables for production use.
+            This ensures consistent security policy across API access and iframe embedding.
         </div>
 
         <div class="examples-grid">

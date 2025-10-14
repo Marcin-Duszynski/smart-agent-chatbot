@@ -23,7 +23,7 @@ class DomainValidationMiddleware(BaseHTTPMiddleware):
             
             # If no domains are configured, allow all requests (development mode)
             if not allowed_domains:
-                logger.info("No embed domains configured - allowing all embed requests (development mode)")
+                logger.info("No CORS origins configured - allowing all embed requests (development mode)")
                 return await call_next(request)
             
             # Get the origin header
@@ -70,7 +70,7 @@ class DomainValidationMiddleware(BaseHTTPMiddleware):
                 if request_domain not in normalized_allowed:
                     # Log unauthorized access attempt
                     logger.warning(f"Unauthorized embed access attempt from domain: {request_domain}")
-                    logger.info(f"Allowed domains: {normalized_allowed}")
+                    logger.info(f"Allowed domains (from CORS_ORIGINS): {normalized_allowed}")
                     
                     # Return 403 Forbidden
                     return Response(

@@ -28,13 +28,6 @@ class Config:
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
     RELOAD: bool = os.getenv("RELOAD", "false").lower() == "true"
     
-    # Embedding settings - dynamically loaded to support testing
-    @classmethod
-    def _get_embed_allowed_domains_env(cls) -> List[str]:
-        """Get embed allowed domains from environment variable"""
-        env_value = os.getenv("EMBED_ALLOWED_DOMAINS", "")
-        return env_value.split(",") if env_value else []
-    
     @classmethod
     def get_cors_origins(cls) -> List[str]:
         """Get CORS origins, filtering out empty strings"""
@@ -42,9 +35,28 @@ class Config:
     
     @classmethod
     def get_embed_allowed_domains(cls) -> List[str]:
-        """Get allowed domains for embedding, filtering out empty strings"""
-        domains = cls._get_embed_allowed_domains_env()
-        return [domain.strip() for domain in domains if domain.strip()]
+        """Get allowed domains for embedding from CORS origins, filtering out empty strings.
+        
+        This method extracts domain names from CORS_ORIGINS to reuse the same configuration
+        for both API CORS and iframe embedding validation. This simplifies configuration
+        by eliminating the need for a separate EMBED_ALLOWED_DOMAINS setting.
+        
+        Example:
+            CORS_ORIGINS = "http://localhost:3000,https://mysite.com:8080"
+            Returns: ["localhost:3000", "mysite.com:8080"]
+        """
+        # Extract domains from CORS origins (remove protocol and path)
+        domains = []
+        for origin in cls.get_cors_origins():
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(origin)
+                if parsed.netloc:
+                    domains.append(parsed.netloc)
+            except Exception:
+                # If parsing fails, skip this origin
+                continue
+        return domains
     
     @classmethod
     def ensure_directories(cls) -> None:

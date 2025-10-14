@@ -193,10 +193,10 @@ export class ChatbotStack extends cdk.Stack {
       OTEL_BSP_EXPORT_TIMEOUT: '5000',
     };
 
-    // Add embedding configuration if provided
-    const embedAllowedDomains = process.env.EMBED_ALLOWED_DOMAINS;
-    if (embedAllowedDomains !== undefined) {
-      backendEnvironment.EMBED_ALLOWED_DOMAINS = embedAllowedDomains;
+    // Add CORS origins configuration (used for both API CORS and embed domain validation)
+    const corsOrigins = process.env.CORS_ORIGINS;
+    if (corsOrigins !== undefined) {
+      backendEnvironment.CORS_ORIGINS = corsOrigins;
     }
 
     const backendContainer = backendTaskDefinition.addContainer('ChatbotBackendContainer', {
@@ -264,6 +264,12 @@ export class ChatbotStack extends cdk.Stack {
       NEXT_PUBLIC_AWS_REGION: this.region,
       AWS_DEFAULT_REGION: this.region,
     };
+
+    // Add CORS origins configuration for frontend CSP
+    const frontendCorsOrigins = process.env.CORS_ORIGINS;
+    if (frontendCorsOrigins !== undefined) {
+      frontendEnvironment.CORS_ORIGINS = frontendCorsOrigins;
+    }
 
     // Add Cognito environment variables if enabled
     if (props?.enableCognito && props?.userPoolId && props?.userPoolClientId) {

@@ -63,6 +63,7 @@ if [ "$ENABLE_COGNITO" != "true" ]; then
     cd ../frontend
     docker build --platform linux/amd64 \
         --build-arg NEXT_PUBLIC_AWS_REGION=$AWS_REGION \
+        --build-arg CORS_ORIGINS="$CORS_ORIGINS" \
         -t chatbot-frontend .
     docker tag chatbot-frontend:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/chatbot-frontend:latest
     docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/chatbot-frontend:latest
@@ -114,6 +115,7 @@ if [ "$ENABLE_COGNITO" = "true" ]; then
         --build-arg NEXT_PUBLIC_AWS_REGION=$AWS_REGION \
         --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID \
         --build-arg NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=$COGNITO_USER_POOL_CLIENT_ID \
+        --build-arg CORS_ORIGINS="$CORS_ORIGINS" \
         -t chatbot-frontend .
     docker tag chatbot-frontend:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/chatbot-frontend:latest
     docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/chatbot-frontend:latest
@@ -121,31 +123,35 @@ if [ "$ENABLE_COGNITO" = "true" ]; then
     cd "$CURRENT_DIR/.."
 fi
 
-# Embedding Configuration
+# CORS Origins Configuration (used for both API access and embedding)
 echo ""
-echo "🌐 Embedding Configuration"
-echo "Configure which domains are allowed to embed the chatbot via iframe."
-echo "This helps prevent unauthorized usage while allowing legitimate integrations."
+echo "🌐 CORS Origins Configuration"
+echo "Configure which domains are allowed to:"
+echo "  1. Make API calls to the backend (CORS)"
+echo "  2. Embed the chatbot via iframe (CSP frame-ancestors)"
+echo "This unified configuration simplifies security management."
 echo ""
 echo "Examples:"
-echo "  - Single domain: example.com"
-echo "  - Multiple domains: example.com,subdomain.example.com,another-site.org"
-echo "  - Leave empty to disable embedding"
+echo "  - Single domain: https://example.com"
+echo "  - Multiple domains: https://example.com,https://blog.example.com,https://partner-site.org"
+echo "  - With ports: https://example.com:8080,https://localhost:3000"
+echo "  - Leave empty for development mode (allows all origins)"
 echo ""
 
-# Check if embed domains are already set via environment variable
-if [ -z "$EMBED_ALLOWED_DOMAINS" ]; then
-    read -p "Enter allowed embedding domains (comma-separated) [leave empty to disable]: " embed_input
+# Check if CORS origins are already set via environment variable
+if [ -z "$CORS_ORIGINS" ]; then
+    read -p "Enter allowed CORS origins (comma-separated, include protocol) [leave empty for dev mode]: " cors_input
     
-    if [ -z "$embed_input" ]; then
-        export EMBED_ALLOWED_DOMAINS=""
-        echo "Embedding disabled - no domains configured"
+    if [ -z "$cors_input" ]; then
+        export CORS_ORIGINS=""
+        echo "Development mode - all origins allowed (not recommended for production)"
     else
-        export EMBED_ALLOWED_DOMAINS="$embed_input"
-        echo "Embedding allowed for domains: $EMBED_ALLOWED_DOMAINS"
+        export CORS_ORIGINS="$cors_input"
+        echo "CORS origins configured: $CORS_ORIGINS"
+        echo "These domains will be allowed for both API access and iframe embedding"
     fi
 else
-    echo "Using configured embedding domains: $EMBED_ALLOWED_DOMAINS"
+    echo "Using configured CORS origins: $CORS_ORIGINS"
 fi
 
 # Collect IP ranges for CIDR-based access control (if not using Cognito)
