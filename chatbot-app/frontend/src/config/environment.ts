@@ -52,7 +52,7 @@ export const getApiUrl = (endpoint: string): string => {
     
     // Local development environment
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `http://localhost:8000/${cleanEndpoint}`;
+      return `${ENV_CONFIG.API_BASE_URL}/${cleanEndpoint}`;
     }
     
     // Production environment - use relative URLs with /api prefix
