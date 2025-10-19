@@ -33,17 +33,27 @@ echo "🔧 Starting backend server..."
 cd backend
 source venv/bin/activate
 
-# Load environment variables from .env file if it exists
-if [ -f .env ]; then
-    echo "📋 Loading environment variables from .env"
+# Load environment variables from master .env file
+MASTER_ENV_FILE="../agent-blueprint/.env"
+if [ -f "$MASTER_ENV_FILE" ]; then
+    echo "📋 Loading environment variables from master .env file: $MASTER_ENV_FILE"
     set -a
-    source .env
+    source "$MASTER_ENV_FILE"
     set +a
-    echo "✅ Environment variables loaded: OTEL_PYTHON_DISTRO=$OTEL_PYTHON_DISTRO"
+    echo "✅ Environment variables loaded from single source of truth"
+    echo "🌐 CORS Origins: $CORS_ORIGINS"
+    echo "🔧 Backend Port: ${PORT:-8000}"
+else
+    echo "⚠️  Master .env file not found at $MASTER_ENV_FILE, using defaults"
+    echo "🔧 Setting up local development defaults..."
+    export CORS_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
+    export PORT=8000
+    echo "✅ Local development configuration set"
 fi
 
 # Start backend and capture the actual port it's using with environment
-env $(grep -v '^#' .env 2>/dev/null | xargs) opentelemetry-instrument python app.py > ../backend.log 2>&1 &
+env $(grep -v '^#' "$MASTER_ENV_FILE" 2>/dev/null | xargs) opentelemetry-instrument python app.py > ../backend.log 2>&1 &
+#env $(grep -v '^#' .env 2>/dev/null | xargs) python app.py > ../backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
 
@@ -73,6 +83,14 @@ echo ""
 echo "🌐 Frontend: http://localhost:3000"
 echo "🔧 Backend API: http://localhost:$ACTUAL_PORT"
 echo "📚 API Docs: http://localhost:$ACTUAL_PORT/docs"
+echo ""
+echo "🎯 Embedding Test Pages:"
+echo "   📋 Interactive Examples: http://localhost:3000/embed-example.html"
+echo "   🧪 Local Test Page: file://$(pwd)/test-embedding-local.html"
+echo "   🔐 Auth Testing: http://localhost:3000/iframe-test.html"
+echo ""
+echo "🔗 Embed URL: http://localhost:3000/embed"
+echo "🌐 CORS Origins: $CORS_ORIGINS"
 echo ""
 echo "ℹ️  Frontend is configured to use backend at: http://localhost:$ACTUAL_PORT"
 echo ""

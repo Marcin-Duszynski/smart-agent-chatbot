@@ -175,8 +175,9 @@ Configure AI models, temperature, and system prompts:
 
 2. **Configure environment**:
    ```bash
-   cp .env.example .env.development
-   # Edit .env.development with your AWS credentials
+   cd agent-blueprint
+   cp .env.example .env
+   # Edit .env with your AWS credentials and API keys
    ```
 
 3. **Start the application**:
@@ -203,6 +204,30 @@ cd agent-blueprint/chatbot-deployment/infrastructure
 cd ../../serverless-mcp-farm
 ./deploy-server.sh
 ```
+
+## Iframe Embedding Support
+
+The chatbot supports Iframe embedding for seamless integration into existing websites and applications. 
+
+**📋 Quick Start:**
+```html
+<iframe 
+  src="https://your-chatbot-domain.com/embed" 
+  width="100%" 
+  height="600"
+  frameborder="0"
+  title="AI Chatbot">
+</iframe>
+```
+
+**🚀 Interactive Demo:** Visit `/embed-example.html` when running the application to see live examples of responsive embedding and floating chat widgets.
+
+**📚 Complete Guide:** See [README_EMBED.md](README_EMBED.md) for comprehensive embedding instructions, including:
+- Framework integration
+- Floating chat widget implementation
+- Cross-origin communication setup
+- Security configuration and troubleshooting
+- Production deployment best practices
 
 ## Technology Stack
 
@@ -282,9 +307,10 @@ Edit `chatbot-app/backend/unified_tools_config.json`:
 ```
 
 ### Environment Configuration
-- `.env.development`: Local development settings
-- `.env.production`: Cloud deployment settings
-- `.env.example`: Template with all available options
+- `agent-blueprint/.env`: Main configuration file for deployment and API keys
+- `agent-blueprint/.env.example`: Template with all available options
+- `chatbot-app/backend/.env`: Backend-specific settings (auto-generated)
+- `chatbot-app/frontend/.env.local`: Frontend-specific settings (auto-generated)
 
 ## Pre-built MCP Servers
 
