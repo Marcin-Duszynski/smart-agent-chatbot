@@ -339,4 +339,4 @@ For a fully working example with CSS, JavaScript, and responsive design, see:
 
 ---
 
-For additional support and advanced configuration options, refer to the main [README.md](README.md) file.
+For additional support and advanced configuration options, refer to the main [README.md](../README.md) file.

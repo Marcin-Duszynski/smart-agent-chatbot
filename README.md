@@ -109,7 +109,7 @@ Specialized AI agents for complex workflows:
 - **Spending Analysis Tool**: Personal spending pattern analysis with demographic comparisons and behavioral insights
 - **Financial Narrative Tool**: Creative storytelling tool that transforms spending data into narratives with AI-generated images
 
-<img src="docs/images/subagent.gif" alt="SubAgent" width="800">
+<img src="docs/images/sub-agent.gif" alt="SubAgent" width="800">
 
 ### Adding MCP Servers
 
@@ -124,6 +124,8 @@ You can easily add new MCP servers through the intuitive interface:
    - **Disconnected**: Server is unreachable or returning errors
    - **Invalid URL**: URL format is incorrect or placeholder
    - **Unknown**: Connection status not yet determined
+
+**📚 Detailed Guide:** See [docs/guides/Add_New_Serverless_MCP.md](docs/guides/Add_New_Serverless_MCP.md) for step-by-step instructions on creating and deploying serverless MCP servers to AWS Lambda.
 
 ### Model Configuration
 
@@ -207,23 +209,33 @@ cd ../../serverless-mcp-farm
 
 ## Iframe Embedding Support
 
-The chatbot supports Iframe embedding for seamless integration into existing websites and applications. 
+The chatbot supports iframe embedding for seamless integration into existing websites and applications.
+
+<img src="docs/images/iframe-embed.png"
+     alt="Iframe Embedding Example"
+     width="800">
 
 **📋 Quick Start:**
 ```html
-<iframe 
-  src="https://your-chatbot-domain.com/embed" 
-  width="100%" 
+<iframe
+  src="https://your-chatbot-domain.com/embed"
+  width="100%"
   height="600"
   frameborder="0"
   title="AI Chatbot">
 </iframe>
 ```
 
-**🚀 Interactive Demo:** Visit `/embed-example.html` when running the application to see live examples of responsive embedding and floating chat widgets.
+**Key Features:**
+- **Responsive Design**: Adapts to any container size
+- **Floating Widget**: Pop-up chat button with customizable styling
+- **Cross-Origin Communication**: Authentication status and event handling
+- **Framework Support**: React, Vue, Angular integration examples
+- **Security**: CORS configuration and CSP header support
 
-**📚 Complete Guide:** See [README_EMBED.md](README_EMBED.md) for comprehensive embedding instructions, including:
-- Framework integration
+**📚 Complete Guide:** See [docs/guides/EMBEDDING_GUIDE.md](docs/guides/EMBEDDING_GUIDE.md) for comprehensive embedding instructions, including:
+- Interactive demo at `/embed-example.html`
+- Framework integration (React, Vue, Angular)
 - Floating chat widget implementation
 - Cross-origin communication setup
 - Security configuration and troubleshooting
@@ -484,8 +496,9 @@ MIT License - see LICENSE file for details.
 ## Support
 
 For issues and questions:
-- Check the troubleshooting section in DEPLOYMENT.md
-- Ensure all prerequisites are installed
-- Verify AWS credentials and permissions
-- Test MCP server connectivity
+- **Troubleshooting Guide**: See [docs/guides/TROUBLESHOOTING.md](docs/guides/TROUBLESHOOTING.md) for common issues and solutions
+- **Deployment Issues**: Check the troubleshooting section in DEPLOYMENT.md
+- **Prerequisites**: Ensure all prerequisites are installed
+- **AWS Setup**: Verify AWS credentials and permissions
+- **MCP Connectivity**: Test MCP server connectivity
 
