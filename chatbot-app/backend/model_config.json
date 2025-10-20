@@ -1,5 +1,5 @@
 {
-  "model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "model_id": "openai.gpt-oss-120b-1:0",
   "temperature": 0.7,
   "system_prompts": [
     {
@@ -28,7 +28,7 @@
     }
   ],
   "caching": {
-    "enabled": true,
+    "enabled": false,
     "description": "Enable prompt caching for improved performance and reduced costs. Automatically adds cache points after tool execution."
   }
 }

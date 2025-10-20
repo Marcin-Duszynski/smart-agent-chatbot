@@ -71,7 +71,7 @@ export function ModelConfigDialog({ sessionId }: ModelConfigDialogProps) {
   const [selectedModelId, setSelectedModelId] = useState('');
   const [selectedTemperature, setSelectedTemperature] = useState(0.7);
   const [selectedPromptId, setSelectedPromptId] = useState('');
-  const [cachingEnabled, setCachingEnabled] = useState(true);
+  const [cachingEnabled, setCachingEnabled] = useState(false);
   
   // Prompt editing
   const [editingPrompt, setEditingPrompt] = useState<SystemPrompt | null>(null);
@@ -93,7 +93,7 @@ export function ModelConfigDialog({ sessionId }: ModelConfigDialogProps) {
       setSelectedModelId(currentConfig.model_id);
       setSelectedTemperature(currentConfig.temperature);
       setSelectedPromptId(currentConfig.active_prompt?.id || '');
-      setCachingEnabled(currentConfig.caching?.enabled ?? true);
+      setCachingEnabled(currentConfig.caching?.enabled ?? false);
     }
   }, [currentConfig]);
 
@@ -129,9 +129,9 @@ export function ModelConfigDialog({ sessionId }: ModelConfigDialogProps) {
       });
       
       const data = await response.json();
-      
+
       // Session ID is managed by parent component
-      
+
       if (data.success && data.config) {
         const config = data.config;
         const activePrompt = config.system_prompts?.find((p: SystemPrompt) => p.active) || null;
@@ -139,7 +139,7 @@ export function ModelConfigDialog({ sessionId }: ModelConfigDialogProps) {
           model_id: config.model_id,
           temperature: config.temperature,
           active_prompt: activePrompt,
-          caching: config.caching || { enabled: true }
+          caching: config.caching || { enabled: false }
         });
       }
     } catch (error) {

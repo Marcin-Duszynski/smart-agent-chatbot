@@ -247,7 +247,7 @@ class ChatbotAgent:
             
             # Load caching configuration (simplified)
             caching_config = config.get("caching", {})
-            self.caching_enabled = caching_config.get("enabled", True)  # Default ON
+            self.caching_enabled = caching_config.get("enabled", False)  # Default OFF
             
             # Apply caching settings to BedrockModel
             bedrock_model_params = {
