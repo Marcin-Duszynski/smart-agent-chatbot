@@ -14,7 +14,7 @@
         "description": "AWS Pricing Information MCP Server"
       },
       "bedrock-kb-retrieval": {
-        "enabled": true,
+        "enabled": false,
         "stack_name": "mcp-bedrock-kb-retrieval-server",
         "description": "Amazon Bedrock Knowledge Base Retrieval MCP Server"
       },
@@ -51,7 +51,7 @@
     },
     "tavily-web-search": {
       "LOG_LEVEL": "INFO",
-      "TAVILY_API_KEY": "{TAVILY_API_KEY}"
+      "TAVILY_API_KEY": "***REMOVED***"
     },
     "financial-market": {
       "LOG_LEVEL": "INFO"
