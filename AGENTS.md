@@ -1,0 +1,1 @@
+Load documentation from @CLAUDE.md file
