@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { Message, ToolExecution } from '@/types/chat'
 import { StreamEvent, ChatSessionState, ChatUIState, ToolProgressState } from '@/types/events'
 import { useAgentAnalysis } from '@/hooks/useAgentAnalysis'
+import logger from '@/utils/logger'
 
 interface UseStreamEventsProps {
   sessionState: ChatSessionState
@@ -31,6 +32,7 @@ export const useStreamEvents = ({
   
   const handleReasoningEvent = useCallback((data: StreamEvent) => {
     if (data.type === 'reasoning') {
+      logger.streamEvent('reasoning', { textLength: data.text?.length || 0 })
       setSessionState(prev => ({
         ...prev,
         reasoning: { text: data.text, isActive: true }
@@ -40,6 +42,8 @@ export const useStreamEvents = ({
 
   const handleResponseEvent = useCallback((data: StreamEvent) => {
     if (data.type === 'response') {
+      logger.streamEvent('response', { textLength: data.text?.length || 0 })
+
       // Finalize reasoning step if active
       if (sessionState.reasoning?.isActive) {
         setSessionState(prev => ({
@@ -51,11 +55,12 @@ export const useStreamEvents = ({
       // Update streaming text
       if (!sessionState.streaming) {
         const newId = Date.now() + Math.random()
+        logger.api('New streaming message started')
         setSessionState(prev => ({
           ...prev,
           streaming: { text: data.text, id: newId }
         }))
-        
+
         // Add new streaming message
         setMessages(prev => [...prev, {
           id: newId,
@@ -71,9 +76,9 @@ export const useStreamEvents = ({
           ...prev,
           streaming: prev.streaming ? { ...prev.streaming, text: prev.streaming.text + data.text } : null
         }))
-        
-        setMessages(prev => prev.map(msg => 
-          msg.id === sessionState.streaming?.id 
+
+        setMessages(prev => prev.map(msg =>
+          msg.id === sessionState.streaming?.id
             ? { ...msg, text: msg.text + data.text }
             : msg
         ))
@@ -83,11 +88,13 @@ export const useStreamEvents = ({
 
   const handleToolUseEvent = useCallback((data: StreamEvent) => {
     if (data.type === 'tool_use') {
+      logger.streamEvent('tool_use', { toolName: data.name, toolUseId: data.toolUseId })
+
       // Fix empty string input - convert to empty object for UI consistency
       const normalizedInput = (data.input as any) === "" || data.input === null ? {} : data.input
-      
+
       // Agent-type tool auto-popup removed - users can manually open Analysis Panel if needed
-      
+
       // Check if tool execution already exists using ref for synchronous access
       const existingToolIndex = currentToolExecutionsRef.current.findIndex(tool => tool.id === data.toolUseId)
       
@@ -162,6 +169,11 @@ export const useStreamEvents = ({
 
   const handleToolResultEvent = useCallback((data: StreamEvent) => {
     if (data.type === 'tool_result') {
+      logger.streamEvent('tool_result', {
+        toolUseId: data.toolUseId,
+        hasResult: !!data.result,
+        imageCount: data.images?.length || 0
+      })
 
       // Update ref first for synchronous access
       const updatedExecutions = currentToolExecutionsRef.current.map(tool =>
@@ -195,6 +207,8 @@ export const useStreamEvents = ({
 
   const handleCompleteEvent = useCallback((data: StreamEvent) => {
     if (data.type === 'complete') {
+      logger.streamEvent('complete', { imageCount: data.images?.length || 0 })
+
       // Finalize streaming message
       if (sessionState.streaming) {
         setMessages(prev => prev.map(msg =>
@@ -204,7 +218,7 @@ export const useStreamEvents = ({
         ))
       }
 
-
+      logger.api('Chat turn completed')
 
       // Reset session state
       setSessionState({
@@ -219,12 +233,20 @@ export const useStreamEvents = ({
   }, [sessionState, setSessionState, setMessages, setUIState])
 
   const handleInitEvent = useCallback(() => {
+    logger.streamEvent('init')
     setUIState(prev => ({ ...prev, isTyping: true }))
   }, [setUIState])
 
 
   const handleProgressEvent = useCallback((data: StreamEvent) => {
     if (data.type === 'tool_progress') {
+      logger.streamEvent('tool_progress', {
+        toolId: data.toolId,
+        step: data.step,
+        progress: data.progress,
+        message: data.message
+      })
+
       const progressState: ToolProgressState = {
         context: data.toolId, // Map toolId to context for compatibility
         executor: 'tool-executor',
@@ -278,13 +300,16 @@ export const useStreamEvents = ({
 
   const handleErrorEvent = useCallback((data: StreamEvent) => {
     if (data.type === 'error') {
+      logger.streamEvent('error', { message: data.message })
+      logger.error('Stream error received:', data.message)
+
       setMessages(prev => [...prev, {
         id: Date.now(),
         text: data.message,
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString()
       }])
-      
+
       setUIState(prev => ({ ...prev, isTyping: false }))
       setSessionState({ reasoning: null, streaming: null, toolExecutions: [], toolProgress: [] })
     }
