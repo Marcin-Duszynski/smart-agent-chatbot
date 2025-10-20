@@ -51,7 +51,7 @@
     },
     "tavily-web-search": {
       "LOG_LEVEL": "INFO",
-      "TAVILY_API_KEY": "***REMOVED***"
+      "TAVILY_API_KEY": "{TAVILY_API_KEY}"
     },
     "financial-market": {
       "LOG_LEVEL": "INFO"

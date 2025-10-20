@@ -101,7 +101,7 @@ if [ -n "$API_URL" ] && [ "$API_URL" != "None" ]; then
     echo -e "\n3. Testing Tavily web search (requires API key in Authorization Bearer header - MCP standard):"
     curl -X POST $API_URL/mcp \
       -H "Content-Type: application/json" \
-      -H "Authorization: Bearer ***REMOVED***" \
+      -H "Authorization: Bearer YOUR_TAVILY_API_KEY" \
       -d '{
         "jsonrpc": "2.0",
         "id": 3,
@@ -119,7 +119,7 @@ if [ -n "$API_URL" ] && [ "$API_URL" != "None" ]; then
     echo -e "\n4. Testing Tavily content extraction (requires API key in Authorization Bearer header - MCP standard):"
     curl -X POST $API_URL/mcp \
       -H "Content-Type: application/json" \
-      -H "Authorization: Bearer ***REMOVED***" \
+      -H "Authorization: Bearer YOUR_TAVILY_API_KEY" \
       -d '{
         "jsonrpc": "2.0",
         "id": 4,

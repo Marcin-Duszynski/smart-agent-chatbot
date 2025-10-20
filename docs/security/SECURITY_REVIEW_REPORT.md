@@ -170,8 +170,8 @@ def get_session(session_id: str, current_user: User = Depends(get_current_user))
 
 **Verified Exposure:**
 ```
-TAVILY_API_KEY=***REMOVED***
-NOVA_ACT_API_KEY=***REMOVED***
+TAVILY_API_KEY=tvly-dev-XXXXXXXXXXXXXXXXXXXXXXXXXXXX
+NOVA_ACT_API_KEY=bb_live_XXXXXXXXXXXXXXXXXXXXXXXXX
 ```
 
 **Issue:**
@@ -191,7 +191,7 @@ Real, active API keys are committed to the public GitHub repository. These keys 
 # Attacker uses stolen API keys
 curl -X POST "https://api.tavily.com/search" \
   -H "Content-Type: application/json" \
-  -d '{"api_key": "***REMOVED***", "query": "any search"}'
+  -d '{"api_key": "tvly-dev-XXXXXXXXXXXXXXXXXXXXXXXXXXXX", "query": "any search"}'
 ```
 
 **Immediate Actions Required:**
