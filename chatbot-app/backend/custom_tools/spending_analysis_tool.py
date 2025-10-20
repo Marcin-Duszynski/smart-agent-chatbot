@@ -42,7 +42,7 @@ class SpendingAnalysisAgent:
     def __init__(self):
         self.bedrock_model = BedrockModel(
             region_name="us-west-2",
-            model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+            model_id="openai.gpt-oss-120b-1:0"
         )
         
         self.analysis_tools = [

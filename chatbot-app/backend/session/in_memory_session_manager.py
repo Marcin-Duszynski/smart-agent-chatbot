@@ -251,7 +251,7 @@ class InMemorySessionManager(SessionManager):
     
     def _load_default_model_config(self) -> Dict[str, Any]:
         """Load default model configuration from model_config.json.
-        
+
         Returns:
             Dictionary containing model configuration
         """
@@ -263,7 +263,7 @@ class InMemorySessionManager(SessionManager):
         except Exception as e:
             logger.error(f"Failed to load default model config: {e}")
             return {
-                "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "model_id": "openai.gpt-oss-20b-1:0",
                 "temperature": 0.7,
                 "system_prompts": [
                     {

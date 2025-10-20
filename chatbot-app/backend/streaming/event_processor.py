@@ -132,7 +132,7 @@ class StreamEventProcessor:
         return datetime.now().isoformat()
     
     def _parse_xml_tool_calls(self, text: str) -> list:
-        """Parse raw XML tool calls from Claude response"""
+        """Parse raw XML tool calls from LLM response"""
         import re
         import json
         

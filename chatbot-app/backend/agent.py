@@ -45,7 +45,7 @@ class ChatbotAgent:
             logger.error(f"Error loading session model config: {e}")
             # Return default config on error
             return {
-                "model_id": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "model_id": "openai.gpt-oss-20b-1:0",
                 "temperature": 0.7,
                 "system_prompts": [
                     {
